@@ -560,6 +560,23 @@ wheels = [
 ]
 
 [[package]]
+name = "functions-hosted-skill-expense-processor"
+version = "0.1.0"
+source = { virtual = "." }
+dependencies = [
+    { name = "azure-identity" },
+    { name = "azure-storage-queue" },
+    { name = "azurefunctions-agents-runtime", extra = ["monitor"] },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "azure-identity", specifier = ">=1.19.0" },
+    { name = "azure-storage-queue", specifier = ">=12.17.0" },
+    { name = "azurefunctions-agents-runtime", extras = ["monitor"], specifier = "==0.1.0b8" },
+]
+
+[[package]]
 name = "furl"
 version = "2.1.4"
 source = { registry = "https://pypi.org/simple" }
@@ -1407,25 +1424,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/85/ed/adab103321c0a6565d5ae1c2998349bc3ee175b82ccc5ae8fc04cc413075/rpds_py-2026.6.3-cp313-cp313-win32.whl", hash = "sha256:8c3d1e9c15b9d51ca0391e13da1a25a0a4df3c58a37c9dc368e0736cf7f69df0", size = 201710, upload-time = "2026-06-30T07:15:53.894Z" },
     { url = "https://files.pythonhosted.org/packages/7b/ed/a03b09668e74e5dabbf2e211f6468e1820c0552f7b0500082da31841bf7b/rpds_py-2026.6.3-cp313-cp313-win_amd64.whl", hash = "sha256:9250a9a0a6fd4648b3f868da8d91a4c52b5811a62df58e753d50ae4454a36f80", size = 219454, upload-time = "2026-06-30T07:15:55.25Z" },
     { url = "https://files.pythonhosted.org/packages/27/17/b8642c12930b71bc2b25831f6708ccf0f75abcd11883932ec9ce54ba3a78/rpds_py-2026.6.3-cp313-cp313-win_arm64.whl", hash = "sha256:900a67df3fd1660b035a4761c4ce73c382ea6b35f90f9863c36c6fd8bf8b09bb", size = 215063, upload-time = "2026-06-30T07:15:56.573Z" },
-]
-
-[[package]]
-name = "serverless-expense-agent"
-version = "0.1.0"
-source = { virtual = "." }
-dependencies = [
-    { name = "azure-identity" },
-    { name = "azure-storage-blob" },
-    { name = "azure-storage-queue" },
-    { name = "azurefunctions-agents-runtime", extra = ["monitor"] },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "azure-identity", specifier = ">=1.19.0" },
-    { name = "azure-storage-blob", specifier = ">=12.19.0" },
-    { name = "azure-storage-queue", specifier = ">=12.17.0" },
-    { name = "azurefunctions-agents-runtime", extras = ["monitor"], specifier = "==0.1.0b8" },
 ]
 
 [[package]]

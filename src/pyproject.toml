@@ -1,17 +1,15 @@
 [project]
-name = "serverless-expense-agent"
+name = "functions-hosted-skill-expense-processor"
 version = "0.1.0"
-description = "Queue-triggered expense/order processor on the Azure Functions Serverless Agents Runtime (preview)."
+description = "Queue-triggered expense processor implemented as an Azure Functions hosted skill."
 requires-python = ">=3.13,<3.14"
 dependencies = [
-    # Standalone Azure Functions serverless agents runtime + Azure Monitor exporter.
+    # Azure Functions hosted skills runtime + Azure Monitor exporter.
     # Distribution: azurefunctions-agents-runtime; import package: azure_functions_agents.
     "azurefunctions-agents-runtime[monitor]==0.1.0b8",
-    # route_expense_decision writes decisions to a queue; the policy tools read the policy
-    # documents from Blob Storage. In the cloud all authenticate with the app's managed
-    # identity (DefaultAzureCredential); locally they use the Azurite connection string.
+    # route_expense_decision writes decisions to a queue. Policy documents are read through
+    # the Azure Blob MCP connector and therefore need no Blob SDK dependency in the app.
     "azure-storage-queue>=12.17.0",
-    "azure-storage-blob>=12.19.0",
     "azure-identity>=1.19.0",
 ]
 

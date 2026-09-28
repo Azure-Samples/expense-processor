@@ -58,10 +58,11 @@ param principalId string = ''
 var abbrs = loadJsonContent('./abbreviations.json')
 var resourceToken = toLower(uniqueString(subscription().id, environmentName, location))
 var tags = { 'azd-env-name': environmentName }
-var functionAppName = '${abbrs.webSitesFunctions}expense-agent-${resourceToken}'
+var functionAppName = '${abbrs.webSitesFunctions}expense-skill-${resourceToken}'
 var foundryAccountName = 'cog-${resourceToken}'
 var foundryProjectName = '${foundryAccountName}-proj'
 var deploymentStorageContainerName = 'app-package-${take(functionAppName, 32)}-${take(toLower(uniqueString(functionAppName, resourceToken)), 7)}'
+var connectorNamespaceName = 'cns-expense-skill-${resourceToken}'
 
 var inputQueueName = 'expense-requests'
 var outputQueueNames = [
@@ -71,12 +72,9 @@ var outputQueueNames = [
 ]
 var allQueueNames = union([inputQueueName], outputQueueNames)
 
-// Blob container that holds the expense-approval policy documents the agent chooses among at
-// decision time (a general policy plus category-specific ones — see src/tools/). The documents
-// are seeded on first run, so the empty container is all the infra needs to provision.
-// POLICY_BLOB is the fallback/general policy used when a request matches no specific policy.
+// Blob container that holds the expense-approval policy documents the skill chooses among at
+// decision time. Deployment seeds a general policy plus category-specific documents.
 var policyContainerName = 'policies'
-var policyBlobName = 'general-expense-policy.md'
 
 // Resource Group
 resource rg 'Microsoft.Resources/resourceGroups@2021-04-01' = {
@@ -92,7 +90,7 @@ module apiUserAssignedIdentity 'br/public:avm/res/managed-identity/user-assigned
   params: {
     location: location
     tags: tags
-    name: '${abbrs.managedIdentityUserAssignedIdentities}expense-agent-${resourceToken}'
+    name: '${abbrs.managedIdentityUserAssignedIdentities}expense-skill-${resourceToken}'
   }
 }
 
@@ -156,11 +154,9 @@ module api './app/api.bicep' = {
       // queues via the Azure Queue Storage SDK, authenticating with this managed identity
       // (AZURE_CLIENT_ID). OUTPUT_STORAGE_ACCOUNT is the fallback queue-endpoint hint.
       OUTPUT_STORAGE_ACCOUNT: storage.outputs.name
-      // The policy tools (src/tools/list_policies.py + get_policy.py) read the approval policy
-      // documents from this blob container on the same account (managed identity in the cloud);
-      // POLICY_BLOB names the general/fallback policy used when no specific policy matches.
-      POLICY_CONTAINER: policyContainerName
-      POLICY_BLOB: policyBlobName
+      // The hosted skill calls the read-only Azure Blob MCP connector with its UAMI.
+      POLICY_MCP_SERVER_URL: policyConnector.outputs.mcpServerUrl
+      POLICY_MCP_CLIENT_ID: apiUserAssignedIdentity.outputs.clientId
       ENABLE_MULTIPLATFORM_BUILD: 'true'
       PYTHON_ENABLE_INIT_INDEXING: '1'
     }
@@ -204,6 +200,21 @@ module storageQueues './app/storage-queues.bicep' = {
   params: {
     storageAccountName: storage.outputs.name
     queueNames: allQueueNames
+  }
+}
+
+// Read-only policy access through a managed-identity Azure Blob MCP connector.
+module policyConnector './app/blob-policy-connector.bicep' = {
+  name: 'policyConnector'
+  scope: rg
+  params: {
+    name: connectorNamespaceName
+    location: location
+    tags: tags
+    functionPrincipalId: apiUserAssignedIdentity.outputs.principalId
+    developerPrincipalId: principalId
+    storageAccountName: storage.outputs.name
+    policyContainerName: policyContainerName
   }
 }
 
@@ -253,3 +264,6 @@ output FOUNDRY_PROJECT_ENDPOINT string = foundry.outputs.projectEndpoint
 output FOUNDRY_MODEL string = foundry.outputs.modelDeploymentName
 output OUTPUT_STORAGE_ACCOUNT string = storage.outputs.name
 output INPUT_QUEUE_NAME string = inputQueueName
+output POLICY_MCP_SERVER_URL string = policyConnector.outputs.mcpServerUrl
+output POLICY_CONNECTOR_NAMESPACE_NAME string = policyConnector.outputs.connectorNamespaceName
+output POLICY_CONNECTOR_CONNECTION_NAME string = policyConnector.outputs.connectionName

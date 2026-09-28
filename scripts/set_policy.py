@@ -6,11 +6,11 @@
 #     "azure-identity>=1.16",
 # ]
 # ///
-"""Show, list, seed, or replace the expense-approval policy documents the agent reads.
+"""Show, list, seed, or replace the expense-approval policy documents the hosted skill reads.
 
-The agent picks a policy per request from a set of documents in the `policies` blob
+The skill picks a policy per request from a set of documents in the `policies` blob
 container (one general policy plus category-specific ones — travel, meals &
-entertainment, equipment & software). Because the agent fetches the chosen policy on
+entertainment, equipment & software). Because the skill fetches the chosen policy on
 every run, replacing a document changes how the matching requests are routed with **no
 code change and no redeploy** — and swapping a single category's policy reroutes only
 that category.

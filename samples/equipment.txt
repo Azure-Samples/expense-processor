@@ -1,1 +1,1 @@
-expense: 4K monitor for the new design workstation; vendor: Dell; amount: 450 USD; category: hardware
+expense: 4K monitor for the new design workstation; vendor: Dell; quoted total: USD 450.00; category: hardware

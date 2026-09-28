@@ -25,7 +25,7 @@ resource foundryAccount 'Microsoft.CognitiveServices/accounts@2025-10-01-preview
     publicNetworkAccess: 'Enabled'
     // Local (API-key) auth is disabled to satisfy the enforced org policy
     // "disable local auth for Cognitive Services" (Safe Secrets Standard).
-    // The agent runtime authenticates to Foundry via the function's managed
+    // The hosted skill runtime authenticates to Foundry via the function's managed
     // identity (Cognitive Services User + OpenAI User roles), so no key is used.
     disableLocalAuth: true
   }
@@ -40,7 +40,7 @@ resource foundryProject 'Microsoft.CognitiveServices/accounts/projects@2025-10-0
   }
   properties: {
     displayName: projectName
-    description: 'Expense processor agent sample project'
+    description: 'Expense processor hosted skill sample project'
   }
 }
 

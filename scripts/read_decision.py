@@ -49,7 +49,7 @@ from _cloud import resolve_queue_account_url
 
 DEV_CONNECTION_STRING = "UseDevelopmentStorage=true"
 
-# The three decision queues the agent routes to, in amount order.
+# The three decision queues the skill routes to, in amount order.
 DECISION_QUEUES = ["expense-approved", "expense-review", "expense-flagged"]
 
 QUEUE_LABELS = {

@@ -1,6 +1,6 @@
-name: serverless-expense-agent
+name: functions-hosted-skill-expense-processor
 metadata:
-  template: serverless-expense-agent@1.0.0
+  template: functions-hosted-skill-expense-processor@1.0.0
 services:
   api:
     project: ./src
@@ -19,28 +19,18 @@ services:
           shell: pwsh
           continueOnError: false
           run: uv export --format requirements-txt --no-hashes --no-dev --no-emit-project -o requirements.txt
-# Seed policies and submit demo messages with the Azure SDK. DefaultAzureCredential
-# uses the identity established by azd, so Azure CLI is not required.
+# Seed policies with the Azure SDK. Demo messages are submitted manually so a fresh
+# deployment starts with empty queues. DefaultAzureCredential uses the identity
+# established by azd, so Azure CLI is not required.
 hooks:
   postprovision:
     posix:
       shell: sh
       continueOnError: true
       interactive: false
-      run: uv run scripts/setup_demo.py seed-policies
+      run: uv run --project src --no-sync python scripts/setup_demo.py seed-policies
     windows:
       shell: pwsh
       continueOnError: true
       interactive: false
-      run: uv run scripts/setup_demo.py seed-policies
-  postup:
-    posix:
-      shell: sh
-      continueOnError: true
-      interactive: false
-      run: uv run scripts/setup_demo.py send-samples
-    windows:
-      shell: pwsh
-      continueOnError: true
-      interactive: false
-      run: uv run scripts/setup_demo.py send-samples
+      run: uv run --project src --no-sync python scripts/setup_demo.py seed-policies
