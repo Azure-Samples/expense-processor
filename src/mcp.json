@@ -1,0 +1,16 @@
+{
+  "servers": {
+    "expense-policy-storage": {
+      "type": "http",
+      "url": "$POLICY_MCP_SERVER_URL",
+      "tools": [
+        "azureblob_ListFolder_V4",
+        "azureblob_GetFileContentByPath_V2"
+      ],
+      "auth": {
+        "scope": "https://apihub.azure.com/.default",
+        "client_id": "$POLICY_MCP_CLIENT_ID"
+      }
+    }
+  }
+}

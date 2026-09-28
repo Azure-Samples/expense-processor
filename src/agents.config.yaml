@@ -1,4 +1,4 @@
-# App-wide defaults for every agent in this function app.
+# App-wide defaults for every hosted skill in this function app.
 #
 # `model` is intentionally NOT set here so the runtime resolves it per provider:
 #   - deployed (foundry provider):  FOUNDRY_MODEL app setting        (e.g. gpt-5.4)

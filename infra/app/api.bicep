@@ -14,7 +14,7 @@ param maximumInstanceCount int = 100
 param identityId string = ''
 param identityClientId string = ''
 
-var applicationInsightsIdentity = 'ClientId=${identityClientId};Authorization=AAD'
+var applicationInsightsIdentity = 'Authorization=AAD;ClientId=${identityClientId}'
 
 var baseAppSettings = {
   AzureWebJobsStorage__credential: 'managedidentity'

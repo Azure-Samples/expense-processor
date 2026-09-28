@@ -9,17 +9,17 @@
 """Drop an expense/order request (free text or JSON) on the expense-requests queue.
 
 By default it targets local Azurite (AzureWebJobsStorage=UseDevelopmentStorage=true),
-so enqueuing needs no cloud resources. (The agent that then processes the message from
+so enqueuing needs no cloud resources. (The hosted skill that then processes the message from
 the queue still calls your configured Azure OpenAI / Foundry model to reason over it.)
 
 Examples
 --------
-    # Send one of the bundled samples (mixed formats: text, JSON, EUR, cash advance, ...)
-    uv run scripts/send_expense.py --file samples/approve.txt
-    uv run scripts/send_expense.py --file samples/route.json
+    # Send one of the bundled samples (words, key-value text, EUR, cash advance, ...)
+    uv run scripts/send_expense.py --file samples/travel.txt
+    uv run scripts/send_expense.py --file samples/equipment.txt
     uv run scripts/send_expense.py --file samples/cash-advance.txt
 
-    # Send free text or inline JSON directly — the agent extracts the details either way
+    # Send free text or inline JSON directly — the skill extracts the details either way
     uv run scripts/send_expense.py "lunch with the team ran about $45"
     uv run scripts/send_expense.py '{"description":"team lunch","amount":45,"currency":"USD"}'
 
@@ -33,7 +33,7 @@ Examples
     uv run scripts/send_expense.py --amount 250 --cloud
 
     # Or point at a specific account explicitly:
-    uv run scripts/send_expense.py --file samples/route.json \
+    uv run scripts/send_expense.py --file samples/travel.txt \
         --account-url https://<storageaccount>.queue.core.windows.net
 """
 from __future__ import annotations
@@ -121,7 +121,7 @@ def main() -> int:
         "--base64",
         action="store_true",
         help="Base64-encode the message. Default is raw text, which the Python queue "
-        "trigger (extension bundle 4.x) delivers to the agent unchanged.",
+        "trigger (extension bundle 4.x) delivers to the skill unchanged.",
     )
     args = parser.parse_args()
 

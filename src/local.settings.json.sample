@@ -2,33 +2,15 @@
   "IsEncrypted": false,
   "Values": {
     "FUNCTIONS_WORKER_RUNTIME": "python",
-
-    "//": "Local Azurite storage — provides the expense-requests trigger queue.",
     "AzureWebJobsStorage": "UseDevelopmentStorage=true",
 
-    "//model": "Point at any Azure OpenAI / Foundry deployment you can reach. Leave the API key",
-    "//model2": "empty to authenticate with Entra ID through DefaultAzureCredential.",
+    "//model": "Authenticate to this Azure OpenAI deployment with DefaultAzureCredential.",
     "AZURE_FUNCTIONS_AGENTS_PROVIDER": "azure_openai",
     "AZURE_OPENAI_ENDPOINT": "https://<your-openai-account>.openai.azure.com/",
     "AZURE_OPENAI_DEPLOYMENT": "<your-deployment-name>",
-    "AZURE_OPENAI_API_KEY": "",
 
-    "//output": "The route_expense_decision tool writes decisions to the destination queues. Locally it",
-    "//output2": "uses this AzureWebJobsStorage connection string to write to Azurite; in the cloud it",
-    "//output3": "authenticates with the Function app's managed identity. OUTPUT_STORAGE_ACCOUNT is only a",
-    "//output4": "fallback queue-endpoint hint for that cloud managed-identity path and is unused locally.",
-    "OUTPUT_STORAGE_ACCOUNT": "localdev",
-
-    "//policy": "The policy tools read the approval policy documents the agent chooses among from",
-    "//policy2": "Blob Storage (this container). Locally the bundled src/policies/*.md are seeded into",
-    "//policy3": "Azurite on first run; POLICY_BLOB is the general fallback. Swap docs with scripts/set_policy.py.",
-    "POLICY_CONTAINER": "policies",
-    "POLICY_BLOB": "general-expense-policy.md",
-
-    "//logs": "Include the agent's full response text in the host logs so the decision is visible.",
-    "ENABLE_SENSITIVE_DATA": "true",
-
-    "AZURE_FUNCTIONS_AGENTS_REASONING_EFFORT": "medium",
-    "AZURE_FUNCTIONS_AGENTS_REASONING_SUMMARY": "concise"
+    "//policy": "Copy POLICY_MCP_SERVER_URL from `azd env get-values`; leave the client ID empty to use your developer credential.",
+    "POLICY_MCP_SERVER_URL": "",
+    "POLICY_MCP_CLIENT_ID": ""
   }
 }
