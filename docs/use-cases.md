@@ -27,8 +27,11 @@ logic compiled into the prompt. After `azd up`, submit the first three together 
 uv run --project src --no-sync python scripts/send_expense.py --file samples/travel.txt        # words
 uv run --project src --no-sync python scripts/send_expense.py --file samples/equipment.txt     # ISO code
 uv run --project src --no-sync python scripts/send_expense.py --file samples/client-dinner.txt # symbol
-uv run --project src --no-sync python scripts/read_decision.py --queue all --peek
+uv run --project src --no-sync python scripts/read_decision.py --queue all --peek --cloud
 ```
+
+Those local submissions enter Azurite, while the Queue MCP server writes decisions to the deployed
+Azure output queues, so the read command uses `--cloud`.
 
 ## A worked example
 

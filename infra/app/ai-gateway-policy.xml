@@ -1,0 +1,48 @@
+<policies>
+  <inbound>
+    <base />
+    <validate-azure-ad-token tenant-id="__TENANT_ID__" header-name="Authorization" failed-validation-httpcode="401" failed-validation-error-message="A valid Function managed identity token is required.">
+      <client-application-ids>
+        <application-id>__FUNCTION_CLIENT_ID__</application-id>
+      </client-application-ids>
+      <audiences>
+        <audience>https://cognitiveservices.azure.com</audience>
+        <audience>https://cognitiveservices.azure.com/</audience>
+      </audiences>
+    </validate-azure-ad-token>
+    <llm-token-limit
+      counter-key="__FUNCTION_CLIENT_ID__"
+      tokens-per-minute="100000"
+      token-quota="1000000"
+      token-quota-period="Daily"
+      estimate-prompt-tokens="true"
+      retry-after-header-name="Retry-After"
+      remaining-tokens-header-name="x-ratelimit-remaining-tokens"
+      remaining-quota-tokens-header-name="x-quota-remaining-tokens"
+      tokens-consumed-header-name="x-tokens-consumed" />
+    <llm-content-safety backend-id="foundry-content-safety" shield-prompt="true" enforce-on-completions="false">
+      <categories output-type="FourSeverityLevels">
+        <category name="Hate" threshold="4" />
+        <category name="SelfHarm" threshold="4" />
+        <category name="Sexual" threshold="4" />
+        <category name="Violence" threshold="4" />
+      </categories>
+    </llm-content-safety>
+    <set-backend-service backend-id="foundry-openai" />
+    <authentication-managed-identity resource="https://cognitiveservices.azure.com" />
+    <llm-emit-token-metric namespace="expense-processor-ai-gateway">
+      <dimension name="API ID" />
+      <dimension name="Operation ID" />
+      <dimension name="ModelDeployment" value="__MODEL_DEPLOYMENT_NAME__" />
+    </llm-emit-token-metric>
+  </inbound>
+  <backend>
+    <forward-request timeout="300" />
+  </backend>
+  <outbound>
+    <base />
+  </outbound>
+  <on-error>
+    <base />
+  </on-error>
+</policies>

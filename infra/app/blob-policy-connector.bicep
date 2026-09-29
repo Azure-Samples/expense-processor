@@ -19,13 +19,24 @@ param storageAccountName string
 @description('Blob container containing the policy documents.')
 param policyContainerName string
 
-@description('Name of the Azure Blob connection.')
-param connectionName string = 'blob-policy-reader'
+@description('Output queues the expense processor may route decisions to.')
+param outputQueueNames array
 
-@description('Name of the configurable MCP server.')
-param mcpServerName string = 'Blob-policy-reader'
+@description('Name of the Azure Blob connection.')
+param blobConnectionName string = 'blob-policy-reader'
+
+@description('Name of the Azure Queues connection.')
+param queueConnectionName string = 'queue-decision-writer'
+
+@description('Name of the Blob policy MCP server.')
+param policyMcpServerName string = 'Blob-policy-reader'
+
+@description('Name of the queue-routing MCP server.')
+param queueMcpServerName string = 'Queue-decision-writer'
 
 var storageBlobDataReaderRoleDefinitionId = '2a2b9908-6ea1-4ae2-8e65-a410df84e7d1'
+var storageQueueDataMessageSenderRoleDefinitionId = 'c6a89b2d-59bc-44d0-9896-0f6e12d7b80a'
+var queueStorageEndpoint = 'https://${storageAccountName}.queue.${environment().suffixes.storage}/'
 
 resource connectorNamespace 'Microsoft.Web/connectorGateways@2026-05-01-preview' = {
   name: name
@@ -39,10 +50,23 @@ resource connectorNamespace 'Microsoft.Web/connectorGateways@2026-05-01-preview'
 
 resource blobConnection 'Microsoft.Web/connectorGateways/connections@2026-05-01-preview' = {
   parent: connectorNamespace
-  name: connectionName
+  name: blobConnectionName
   properties: {
     connectorName: 'azureblob'
     displayName: 'Expense Policy Blob Reader'
+    parameterValueSet: {
+      name: 'managedIdentityAuth'
+      values: {}
+    }
+  }
+}
+
+resource queueConnection 'Microsoft.Web/connectorGateways/connections@2026-05-01-preview' = {
+  parent: connectorNamespace
+  name: queueConnectionName
+  properties: {
+    connectorName: 'azurequeues'
+    displayName: 'Expense Decision Queue Writer'
     parameterValueSet: {
       name: 'managedIdentityAuth'
       values: {}
@@ -95,9 +119,54 @@ resource developerConnectionAccessPolicy 'Microsoft.Web/connectorGateways/connec
   }
 }
 
+resource namespaceQueueConnectionAccessPolicy 'Microsoft.Web/connectorGateways/connections/accessPolicies@2026-05-01-preview' = {
+  parent: queueConnection
+  name: 'namespace-decision-writer'
+  location: location
+  properties: {
+    principal: {
+      type: 'ActiveDirectory'
+      identity: {
+        objectId: connectorNamespace.identity.principalId
+        tenantId: tenantId
+      }
+    }
+  }
+}
+
+resource functionQueueConnectionAccessPolicy 'Microsoft.Web/connectorGateways/connections/accessPolicies@2026-05-01-preview' = {
+  parent: queueConnection
+  name: 'function-decision-writer'
+  location: location
+  properties: {
+    principal: {
+      type: 'ActiveDirectory'
+      identity: {
+        objectId: functionPrincipalId
+        tenantId: tenantId
+      }
+    }
+  }
+}
+
+resource developerQueueConnectionAccessPolicy 'Microsoft.Web/connectorGateways/connections/accessPolicies@2026-05-01-preview' = if (!empty(developerPrincipalId)) {
+  parent: queueConnection
+  name: 'developer-decision-writer'
+  location: location
+  properties: {
+    principal: {
+      type: 'ActiveDirectory'
+      identity: {
+        objectId: developerPrincipalId
+        tenantId: tenantId
+      }
+    }
+  }
+}
+
 resource policyMcpServer 'Microsoft.Web/connectorGateways/mcpServerConfigs@2026-05-01-preview' = {
   parent: connectorNamespace
-  name: mcpServerName
+  name: policyMcpServerName
   properties: {
     description: 'Read-only access to expense policy documents in Azure Blob Storage.'
     state: 'Enabled'
@@ -108,7 +177,7 @@ resource policyMcpServer 'Microsoft.Web/connectorGateways/mcpServerConfigs@2026-
     policies: []
     connectors: [
       {
-        connectionName: connectionName
+        connectionName: blobConnectionName
         name: 'azureblob'
         displayName: 'Azure Blob Storage'
         description: 'Lists and reads expense policy documents.'
@@ -161,6 +230,65 @@ resource policyMcpServer 'Microsoft.Web/connectorGateways/mcpServerConfigs@2026-
   ]
 }
 
+resource queueMcpServer 'Microsoft.Web/connectorGateways/mcpServerConfigs@2026-05-01-preview' = {
+  parent: connectorNamespace
+  name: queueMcpServerName
+  properties: {
+    description: 'Send expense decisions to the approved Azure Queue Storage output queues.'
+    state: 'Enabled'
+    disableApiKeyAuth: true
+    settings: {
+      textOnlyContent: true
+    }
+    policies: []
+    connectors: [
+      {
+        connectionName: queueConnectionName
+        name: 'azurequeues'
+        displayName: 'Azure Queue Storage'
+        description: 'Routes one expense decision to an approved output queue.'
+        operations: [
+          {
+            name: 'PutMessage_V2'
+            displayName: 'Route expense decision'
+            description: 'Send one expense decision JSON message to the selected output queue.'
+            userParameters: [
+              {
+                name: 'storageAccountName'
+                value: queueStorageEndpoint
+              }
+            ]
+            agentParameters: [
+              {
+                name: 'queueName'
+                schema: {
+                  type: 'string'
+                  required: true
+                  enum: outputQueueNames
+                  description: 'Destination queue for the decision.'
+                }
+              }
+              {
+                name: 'message'
+                schema: {
+                  type: 'string'
+                  required: true
+                  description: 'Complete expense decision as a compact JSON string.'
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+  dependsOn: [
+    namespaceQueueConnectionAccessPolicy
+    functionQueueConnectionAccessPolicy
+    developerQueueConnectionAccessPolicy
+  ]
+}
+
 resource storageAccount 'Microsoft.Storage/storageAccounts@2023-05-01' existing = {
   name: storageAccountName
 }
@@ -175,6 +303,18 @@ resource policyContainer 'Microsoft.Storage/storageAccounts/blobServices/contain
   name: policyContainerName
 }
 
+resource queueService 'Microsoft.Storage/storageAccounts/queueServices@2023-05-01' existing = {
+  parent: storageAccount
+  name: 'default'
+}
+
+resource outputQueues 'Microsoft.Storage/storageAccounts/queueServices/queues@2023-05-01' existing = [
+  for queueName in outputQueueNames: {
+    parent: queueService
+    name: queueName
+  }
+]
+
 resource connectorPolicyReaderRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   name: guid(policyContainer.id, connectorNamespace.name, storageBlobDataReaderRoleDefinitionId)
   scope: policyContainer
@@ -188,7 +328,24 @@ resource connectorPolicyReaderRole 'Microsoft.Authorization/roleAssignments@2022
   }
 }
 
-output mcpServerUrl string = policyMcpServer.properties.mcpEndpointUrl
+resource connectorQueueSenderRoles 'Microsoft.Authorization/roleAssignments@2022-04-01' = [
+  for (queueName, index) in outputQueueNames: {
+    name: guid(outputQueues[index].id, connectorNamespace.name, storageQueueDataMessageSenderRoleDefinitionId)
+    scope: outputQueues[index]
+    properties: {
+      roleDefinitionId: subscriptionResourceId(
+        'Microsoft.Authorization/roleDefinitions',
+        storageQueueDataMessageSenderRoleDefinitionId
+      )
+      principalId: connectorNamespace.identity.principalId
+      principalType: 'ServicePrincipal'
+    }
+  }
+]
+
+output policyMcpServerUrl string = policyMcpServer.properties.mcpEndpointUrl
+output queueMcpServerUrl string = queueMcpServer.properties.mcpEndpointUrl
 output connectorNamespaceName string = connectorNamespace.name
-output connectionName string = blobConnection.name
+output blobConnectionName string = blobConnection.name
+output queueConnectionName string = queueConnection.name
 output principalId string = connectorNamespace.identity.principalId

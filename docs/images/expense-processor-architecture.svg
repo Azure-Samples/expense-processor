@@ -1,0 +1,150 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="title desc">
+  <title id="title">Azure Functions Hosted Skill Expense Processor architecture</title>
+  <desc id="desc">An expense request arrives on an Azure Storage queue. An Azure Functions hosted skill reads the event, discovers and reads a policy through a Blob MCP connector, reasons through a governed AI Gateway, and routes one decision through a Queue MCP connector to approved, review, or flagged queues.</desc>
+  <defs>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="5" stdDeviation="5" flood-color="#17365f" flood-opacity=".20"/>
+    </filter>
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#17365f" flood-opacity=".17"/>
+    </filter>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#bdcddd"/>
+    </marker>
+    <style>
+      text { font-family: "Segoe UI", Inter, Arial, sans-serif; }
+      .navy { fill: #123b6d; }
+      .body { fill: #203f63; }
+      .muted { fill: #617b9d; }
+      .label { fill: #647d9c; font-size: 15px; font-weight: 700; letter-spacing: .7px; }
+      .cardTitle { fill: #203f63; font-size: 20px; font-weight: 700; }
+      .cardSub { fill: #617b9d; font-size: 15px; }
+      .rowTitle { fill: #203f63; font-size: 18px; font-weight: 700; }
+      .rowSub { fill: #617b9d; font-size: 13px; }
+      .badgeText { fill: #ffffff; font-size: 14px; font-weight: 700; }
+    </style>
+  </defs>
+
+  <rect width="1600" height="900" fill="#ffffff"/>
+
+  <text x="50" y="76" class="navy" font-size="51" font-weight="750">An expense arrives that needs judgment</text>
+  <rect x="52" y="116" width="138" height="7" rx="3.5" fill="#ffb000"/>
+  <text x="800" y="168" text-anchor="middle" class="muted" font-size="20">
+    A queue-triggered hosted skill selects the right policy, reasons, and routes one decision.
+  </text>
+
+  <text x="42" y="224" class="label">EVENT + CONTEXT</text>
+  <text x="1235" y="224" class="label">DECISION QUEUES</text>
+
+  <!-- Input card -->
+  <g filter="url(#shadow)">
+    <rect x="40" y="242" width="330" height="114" rx="18" fill="#ffffff" stroke="#cfdae6" stroke-width="1.5"/>
+    <circle cx="91" cy="299" r="32" fill="#3279df"/>
+    <text x="91" y="306" text-anchor="middle" fill="#ffffff" font-size="18" font-weight="800">1</text>
+    <text x="137" y="287" class="cardTitle">Raw expense request</text>
+    <text x="137" y="316" class="cardSub">Azure Queue Storage</text>
+    <text x="137" y="339" class="cardSub">text · email · key/value · JSON</text>
+  </g>
+
+  <!-- Policy card -->
+  <g filter="url(#shadow)">
+    <rect x="40" y="425" width="330" height="114" rx="18" fill="#ffffff" stroke="#cfdae6" stroke-width="1.5"/>
+    <circle cx="91" cy="482" r="32" fill="#16aaa6"/>
+    <text x="91" y="489" text-anchor="middle" fill="#ffffff" font-size="18" font-weight="800">P</text>
+    <text x="137" y="470" class="cardTitle">Policy documents</text>
+    <text x="137" y="499" class="cardSub">Blob Storage</text>
+    <text x="137" y="522" class="cardSub" style="font-size:13px">travel · meals · equipment · general</text>
+  </g>
+
+  <!-- Arrows into skill -->
+  <path d="M370 299 H510" fill="none" stroke="#bdcddd" stroke-width="6" marker-end="url(#arrow)"/>
+  <path d="M370 482 H510" fill="none" stroke="#bdcddd" stroke-width="6" marker-end="url(#arrow)"/>
+
+  <!-- Central skill container -->
+  <g filter="url(#shadow)">
+    <path d="M510 242 H1078 V684 Q1078 739 1023 739 H565 Q510 739 510 684 Z" fill="#ffffff" stroke="#cbd7e3" stroke-width="2"/>
+    <path d="M510 242 H1078 V342 H510 Z" fill="#214c7d"/>
+  </g>
+
+  <circle cx="570" cy="292" r="33" fill="#ffb21a" filter="url(#softShadow)"/>
+  <text x="570" y="300" text-anchor="middle" fill="#ffffff" font-size="17" font-weight="800">AI</text>
+  <text x="619" y="304" fill="#ffffff" font-size="29" font-weight="750">Expense Processor</text>
+
+  <g filter="url(#softShadow)">
+    <rect x="938" y="267" width="112" height="48" rx="8" fill="#315f91" stroke="#77a1ca"/>
+  </g>
+  <circle cx="961" cy="291" r="7" fill="#8b57e6"/>
+  <text x="979" y="297" class="badgeText">Model</text>
+  <polygon points="498,290 510,299 498,308" fill="#bdcddd"/>
+  <polygon points="498,473 510,482 498,491" fill="#bdcddd"/>
+
+  <!-- Skill rows -->
+  <g filter="url(#softShadow)">
+    <rect x="588" y="365" width="410" height="67" rx="12" fill="#f0f5fa" stroke="#ccd9e7"/>
+    <circle cx="624" cy="399" r="15" fill="#3279df"/>
+    <text x="624" y="404" text-anchor="middle" fill="#ffffff" font-size="12" font-weight="800">2</text>
+    <text x="655" y="394" class="rowTitle">Understand the event</text>
+    <text x="655" y="416" class="rowSub">Extract amount, currency, vendor, category, and ID</text>
+  </g>
+
+  <g filter="url(#softShadow)">
+    <rect x="588" y="449" width="410" height="67" rx="12" fill="#f0f5fa" stroke="#ccd9e7"/>
+    <circle cx="624" cy="483" r="15" fill="#16aaa6"/>
+    <text x="624" y="488" text-anchor="middle" fill="#ffffff" font-size="12" font-weight="800">3</text>
+    <text x="655" y="478" class="rowTitle">Discover + read the policy</text>
+    <text x="655" y="500" class="rowSub">Connector Namespace · Blob · read only</text>
+  </g>
+
+  <g filter="url(#softShadow)">
+    <rect x="588" y="533" width="410" height="67" rx="12" fill="#f0f5fa" stroke="#ccd9e7"/>
+    <circle cx="624" cy="567" r="15" fill="#ffb21a"/>
+    <text x="624" y="572" text-anchor="middle" fill="#ffffff" font-size="12" font-weight="800">4</text>
+    <text x="655" y="562" class="rowTitle">Apply policy + judgment</text>
+    <text x="655" y="584" class="rowSub">AI Gateway · limits · shielding · safety</text>
+  </g>
+
+  <g filter="url(#softShadow)">
+    <rect x="588" y="617" width="410" height="67" rx="12" fill="#f0f5fa" stroke="#ccd9e7"/>
+    <circle cx="624" cy="651" r="15" fill="#8756dd"/>
+    <text x="624" y="656" text-anchor="middle" fill="#ffffff" font-size="12" font-weight="800">5</text>
+    <text x="655" y="646" class="rowTitle">Route one decision</text>
+    <text x="655" y="668" class="rowSub">Connector Namespace · Queues · send only</text>
+  </g>
+
+  <!-- Arrows from skill -->
+  <path d="M1078 295 H1218" fill="none" stroke="#bdcddd" stroke-width="6" marker-end="url(#arrow)"/>
+  <path d="M1078 448 H1218" fill="none" stroke="#bdcddd" stroke-width="6" marker-end="url(#arrow)"/>
+  <path d="M1078 601 H1218" fill="none" stroke="#bdcddd" stroke-width="6" marker-end="url(#arrow)"/>
+  <polygon points="1206,286 1218,295 1206,304" fill="#bdcddd"/>
+  <polygon points="1206,439 1218,448 1206,457" fill="#bdcddd"/>
+  <polygon points="1206,592 1218,601 1206,610" fill="#bdcddd"/>
+
+  <!-- Output cards -->
+  <g filter="url(#shadow)">
+    <rect x="1230" y="242" width="330" height="106" rx="18" fill="#ffffff" stroke="#cfdae6" stroke-width="1.5"/>
+    <circle cx="1280" cy="295" r="31" fill="#2bb983"/>
+    <text x="1280" y="302" text-anchor="middle" fill="#ffffff" font-size="17" font-weight="800">6</text>
+    <text x="1325" y="286" class="cardTitle">Approved</text>
+    <text x="1325" y="315" class="cardSub">expense-approved</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="1230" y="395" width="330" height="106" rx="18" fill="#ffffff" stroke="#cfdae6" stroke-width="1.5"/>
+    <circle cx="1280" cy="448" r="31" fill="#ffad17"/>
+    <text x="1280" y="455" text-anchor="middle" fill="#ffffff" font-size="17" font-weight="800">6</text>
+    <text x="1325" y="439" class="cardTitle">Needs review</text>
+    <text x="1325" y="468" class="cardSub">expense-review</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="1230" y="548" width="330" height="106" rx="18" fill="#ffffff" stroke="#cfdae6" stroke-width="1.5"/>
+    <circle cx="1280" cy="601" r="31" fill="#e64d5d"/>
+    <text x="1280" y="608" text-anchor="middle" fill="#ffffff" font-size="17" font-weight="800">6</text>
+    <text x="1325" y="592" class="cardTitle">Flagged</text>
+    <text x="1325" y="621" class="cardSub">expense-flagged</text>
+  </g>
+
+  <text x="800" y="824" text-anchor="middle" class="muted" font-size="21">
+    The request format can vary. The selected policy and context determine the path.
+  </text>
+</svg>

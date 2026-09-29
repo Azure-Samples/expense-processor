@@ -67,7 +67,7 @@ for a brand-new category.
 ## Tune the hosted skill
 
 The skill's instructions are the markdown body of
-[`src/agents/expense_processor.agent.md`](../src/agents/expense_processor.agent.md). The local model
+[`src/expense_processor.agent.md`](../src/expense_processor.agent.md). The local model
 connection is set in [`src/local.settings.json.sample`](../src/local.settings.json.sample); cloud
 model and reasoning settings are configured by the infrastructure deployment. Redeploy with
 `azd deploy` after changing the skill definition.

@@ -11,6 +11,17 @@
         "scope": "https://apihub.azure.com/.default",
         "client_id": "$POLICY_MCP_CLIENT_ID"
       }
+    },
+    "expense-decision-queues": {
+      "type": "http",
+      "url": "$QUEUE_MCP_SERVER_URL",
+      "tools": [
+        "azurequeues_PutMessage_V2"
+      ],
+      "auth": {
+        "scope": "https://apihub.azure.com/.default",
+        "client_id": "$QUEUE_MCP_CLIENT_ID"
+      }
     }
   }
 }

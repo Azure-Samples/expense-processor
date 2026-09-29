@@ -37,8 +37,10 @@ flowchart LR
         pdocs[(travel · meals · equipment<br/>general policy docs)]
     end
 
-    connector{{Connector Namespace<br/>Azure Blob MCP · read only}}
+    connector{{Connector Namespace<br/>Blob read MCP · Queue send MCP}}
     skill{{Expense Processor skill<br/>extract · list · select · fetch · apply · route}}
+    gateway{{API Management AI Gateway<br/>authenticate · limit · shield · measure}}
+    model[(Microsoft Foundry<br/>gpt-5.4)]
 
     subgraph outbound["Azure Queue Storage · outbound"]
         approved[[expense-approved]]
@@ -50,18 +52,23 @@ flowchart LR
     inq -->|queue trigger| skill
     pdocs -. managed identity .-> connector
     connector -. azureblob_ListFolder_V4<br/>azureblob_GetFileContentByPath_V2 .-> skill
-    skill -->|route_expense_decision| approved
-    skill -->|route_expense_decision| review
-    skill -->|route_expense_decision| flagged
+    skill -->|OpenAI Responses API<br/>Function UAMI| gateway
+    gateway -->|APIM managed identity| model
+    skill -->|azurequeues_PutMessage_V2<br/>managed identity| connector
+    connector --> approved
+    connector --> review
+    connector --> flagged
 ```
 
 It runs on **Azure Functions Flex Consumption**, so it scales to zero and costs nothing when the
-queue is empty.
+queue is empty. The API Management Developer gateway does not scale to zero and has a recurring
+cost; it is selected because Consumption does not support the token-limit and Content Safety
+policies used by this sample.
 
 ## The hosted skill, step by step
 
 The entire skill is defined declaratively in
-[`src/agents/expense_processor.agent.md`](../src/agents/expense_processor.agent.md). The front matter
+[`src/expense_processor.agent.md`](../src/expense_processor.agent.md). The front matter
 wires the queue trigger, and the markdown body *is* the system prompt. It does the work in eight steps:
 
 1. **Extract and normalize:** pull `amount`, `currency`, `category`, `vendor`, and an `expenseId` out
@@ -76,7 +83,8 @@ wires the queue trigger, and the markdown body *is* the system prompt. It does t
 5. **Decide:** apply the policy it just fetched, in order; the first matching rule wins.
 6. **Build:** assemble a compact decision JSON, including `policyApplied` so the chosen policy is
    visible.
-7. **Route:** call the `route_expense_decision` tool to enqueue the decision on the destination queue.
+7. **Route:** call `azurequeues_PutMessage_V2` once to enqueue the compact decision JSON on the
+   destination queue.
 8. **Respond:** return the decision JSON so the outcome is visible in the logs and traces.
 
 ## The policies live in documents, and the skill picks one
@@ -103,22 +111,28 @@ skill fetches it. The bundled documents are **seeded automatically at deploy tim
 
 ## Managed identity, not keys
 
-Policy reads and queue operations use separate least-privilege identities:
+Policy reads and queue writes use separate least-privilege role assignments:
 
 - The **Connector Namespace system-assigned identity** has **Storage Blob Data Reader** scoped only
   to the `policies` container. The MCP server exposes only root/folder listing and content-by-path
   actions; it cannot create, update, or delete blobs.
-- The **Function app user-assigned identity** authenticates to the MCP endpoint, reads the queue
-  trigger, and runs **[`route_expense_decision`](../src/tools/route_decision.py)** to write the
-  decision queue.
+- The same **Connector Namespace system-assigned identity** has **Storage Queue Data Message
+  Sender** scoped separately to each output queue. Its queue MCP server exposes only
+  `azurequeues_PutMessage_V2`, pins the storage endpoint, and limits `queueName` to the three output
+  queues. It has no role on `expense-requests`.
+- The **Function app user-assigned identity** authenticates to both MCP endpoints, reads the input
+  queue trigger, and authenticates to the AI Gateway, which accepts only this client identity.
+- The **API Management system-assigned identity** calls the Microsoft Foundry OpenAI and Content
+  Safety endpoints. The gateway applies 100,000 tokens/minute and 1,000,000 tokens/day across the
+  Function app, checks prompts for attacks and medium/high harmful content, and emits token metrics.
 
 The account keeps shared-key access disabled (`allowSharedKeyAccess: false`). Policy seeding and
 administration remain explicit deployment/operator actions rather than giving the runtime connector
 write access.
 
-> Connector Namespace has no local emulator. Azurite still covers input/output queues locally, but
-> complete local policy lookup requires the deployed MCP endpoint and an authorized developer
-> credential.
+> Connector Namespace has no local emulator. Azurite covers the local input trigger, but complete
+> local runs require both deployed MCP endpoints and an authorized developer credential; decisions
+> are written to the deployed Azure output queues.
 
 ## Application Insights telemetry
 
@@ -131,6 +145,8 @@ The `azurefunctions-agents-runtime[monitor]` dependency configures the Azure Mon
 exporter without application instrumentation code. The runtime emits a parent `agent.run` span plus
 model and tool child spans. Setting `telemetryMode` to `OpenTelemetry` in
 [`src/host.json`](../src/host.json) also correlates Functions host telemetry with those worker spans.
+API Management uses its managed identity to write request telemetry and token metrics to the same
+Application Insights resource. Gateway diagnostics do not capture prompt or response bodies.
 See the [deployment telemetry walkthrough](deploy.md#show-the-telemetry) for the portal flow and KQL.
 
 ## Under the hood: message encoding
@@ -148,23 +164,20 @@ settings make that work end to end:
 
 ```
 src/
-  agents/
-    expense_processor.agent.md # hosted skill: extract -> list -> select -> fetch -> apply -> route
+  expense_processor.agent.md   # hosted skill: extract -> list -> select -> fetch -> apply -> route
   policies/                    # the policy library, seeded to Blob Storage at deploy time
     general-expense-policy.md  #   fallback / catch-all
     travel-policy.md           #   flights, hotels, rail, taxis, car rental, mileage
     meals-entertainment-policy.md  # meals, catering, client entertainment
     equipment-software-policy.md   # hardware, software, subscriptions
-  tools/
-    route_decision.py          # custom tool: writes the decision to a queue (managed identity)
-  mcp.json                     # read-only Azure Blob MCP server and tool allowlist
+  mcp.json                     # Blob-read and Queue-send MCP servers with tool allowlists
   function_app.py              # hosted skills runtime entry point
   agents.config.yaml           # runtime defaults (timeout)
   host.json                    # queue messageEncoding + logging config
   pyproject.toml               # function app dependencies (uv is the source of truth)
   uv.lock                      # pinned dependency lockfile
   local.settings.json.sample   # app settings reference
-infra/                         # azd / Bicep: Functions, Foundry, storage, Connector Namespace, identity, RBAC
+infra/                         # azd / Bicep: Functions, AI Gateway, Foundry, storage, Connector Namespace, identity, RBAC
 scripts/                       # uv run helper scripts: send / read / set-policy (PEP 723, self-describing deps)
 samples/                       # varied formats and amount notation + a stricter travel policy for the swap demo
 azure.yaml                     # azd service definition + hooks (generate requirements.txt, seed policies)

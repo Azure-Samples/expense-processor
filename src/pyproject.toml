@@ -7,8 +7,8 @@ dependencies = [
     # Azure Functions hosted skills runtime + Azure Monitor exporter.
     # Distribution: azurefunctions-agents-runtime; import package: azure_functions_agents.
     "azurefunctions-agents-runtime[monitor]==0.1.0b8",
-    # route_expense_decision writes decisions to a queue. Policy documents are read through
-    # the Azure Blob MCP connector and therefore need no Blob SDK dependency in the app.
+    # Operator-facing demo scripts send and inspect queue messages with Entra authentication.
+    # Runtime policy reads and decision writes use Connector Namespace MCP servers instead.
     "azure-storage-queue>=12.17.0",
     "azure-identity>=1.19.0",
 ]

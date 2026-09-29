@@ -18,6 +18,6 @@ For each message:
 2. **Discover the policies.** Call **List expense policy documents** (`azureblob_ListFolder_V4`); it is already scoped to the `policies` container. Choose the document whose filename best matches the expense category. Use `general-expense-policy.md` when nothing else fits.
 3. **Fetch it.** Call **Read expense policy document** (`azureblob_GetFileContentByPath_V2`) with the full path `/policies/<document-name>`, and apply the returned Markdown. If a category-specific document cannot be read, fetch `/policies/general-expense-policy.md` instead.
 4. **Decide.** Work the policy's rules top to bottom; the first rule that matches wins. The amount is the backbone — for an ordinary in-scope USD expense the policy's amount thresholds decide the outcome, applied exactly at the boundaries. Never guess an exchange rate for a non-USD amount. The result is one of three queues: `expense-approved`, `expense-review`, or `expense-flagged`.
-5. **Route** by calling `route_expense_decision` **once** with the destination queue and the decision JSON. If it errors, do not retry against a different queue.
+5. **Route** by calling **Route expense decision** (`azurequeues_PutMessage_V2`) **once** with `queueName` set to the destination queue and `message` set to the complete decision as a compact JSON string. If it errors, do not retry against a different queue.
 
 Base every decision only on the policy you just fetched — never on rules remembered from an earlier message. Keep `reason` to one sentence, and always set `policyApplied` to the document you used.
