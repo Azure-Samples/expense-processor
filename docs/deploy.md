@@ -93,8 +93,8 @@ view rather than only in the trace-log list. Look for:
 - API Management requests for `POST /openai/v1/responses`.
 - Custom token metrics in the `expense-processor-ai-gateway` namespace.
 
-The preview **Agents** blade can fail to load even when ingestion is healthy, and it may display a
-generated `gen_ai.agent.name` instead of the hosted skill's friendly name. Use **Search** or
+The preview **Agents** blade may display a generated `gen_ai.agent.name` instead of the hosted
+skill's friendly name. Use **Search** or
 **Logs** to verify and inspect the complete correlated spans. See
 [Troubleshooting](troubleshooting.md#application-insights-agents-doesnt-load-or-show-the-hosted-skill-correctly).
 
