@@ -1,7 +1,7 @@
 # App-wide defaults for every hosted skill in this function app.
 #
 # `model` is intentionally NOT set here so the runtime resolves it per provider:
-#   - deployed (foundry provider):  FOUNDRY_MODEL app setting        (e.g. gpt-5.4)
-#   - local (azure_openai provider): AZURE_OPENAI_DEPLOYMENT setting (e.g. gpt-5.4-mini)
+#   - deployed (azure_openai through AI Gateway): AZURE_OPENAI_DEPLOYMENT (e.g. gpt-5.4)
+#   - local (direct azure_openai):                  AZURE_OPENAI_DEPLOYMENT (e.g. gpt-5.4-mini)
 # Set AZURE_FUNCTIONS_AGENTS_MODEL to override in any environment.
 timeout: 900

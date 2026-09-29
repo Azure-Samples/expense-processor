@@ -15,25 +15,25 @@ the queue still calls your configured Azure OpenAI / Foundry model to reason ove
 Examples
 --------
     # Send one of the bundled samples (words, key-value text, EUR, cash advance, ...)
-    uv run scripts/send_expense.py --file samples/travel.txt
-    uv run scripts/send_expense.py --file samples/equipment.txt
-    uv run scripts/send_expense.py --file samples/cash-advance.txt
+    uv run --project src --no-sync python scripts/send_expense.py --file samples/travel.txt
+    uv run --project src --no-sync python scripts/send_expense.py --file samples/equipment.txt
+    uv run --project src --no-sync python scripts/send_expense.py --file samples/cash-advance.txt
 
     # Send free text or inline JSON directly — the skill extracts the details either way
-    uv run scripts/send_expense.py "lunch with the team ran about $45"
-    uv run scripts/send_expense.py '{"description":"team lunch","amount":45,"currency":"USD"}'
+    uv run --project src --no-sync python scripts/send_expense.py "lunch with the team ran about $45"
+    uv run --project src --no-sync python scripts/send_expense.py '{"description":"team lunch","amount":45,"currency":"USD"}'
 
     # Generate a message from just an amount (quick way to prove the amount drives the decision)
-    uv run scripts/send_expense.py --amount 45
-    uv run scripts/send_expense.py --amount 5000
+    uv run --project src --no-sync python scripts/send_expense.py --amount 45
+    uv run --project src --no-sync python scripts/send_expense.py --amount 5000
 
     # Against the DEPLOYED account (Entra ID), auto-resolves the queue endpoint from your
     # azd env (OUTPUT_STORAGE_ACCOUNT). The identity used by azd needs the "Storage Queue
     # Data Message Sender" (or Contributor) role on the account.
-    uv run scripts/send_expense.py --amount 250 --cloud
+    uv run --project src --no-sync python scripts/send_expense.py --amount 250 --cloud
 
     # Or point at a specific account explicitly:
-    uv run scripts/send_expense.py --file samples/travel.txt \
+    uv run --project src --no-sync python scripts/send_expense.py --file samples/travel.txt \
         --account-url https://<storageaccount>.queue.core.windows.net
 """
 from __future__ import annotations

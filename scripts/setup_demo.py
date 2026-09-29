@@ -79,7 +79,7 @@ def send_samples(credential: DefaultAzureCredential) -> None:
 
     print(
         "Sent 3 sample requests. Read the decisions with: "
-        "uv run scripts/read_decision.py --queue all --peek --cloud"
+        "uv run --project src --no-sync python scripts/read_decision.py --queue all --peek --cloud"
     )
 
 

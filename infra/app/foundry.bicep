@@ -6,10 +6,6 @@ param modelDeploymentName string = 'gpt-5.4'
 param modelName string = 'gpt-5.4'
 param modelVersion string = '2026-03-05'
 param deploymentCapacity int = 50
-param managedIdentityPrincipalId string
-
-var cognitiveServicesUserRoleId = 'a97b65f3-24c7-4388-baec-2e87135dc908'
-var cognitiveServicesOpenAiUserRoleId = '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd'
 
 resource foundryAccount 'Microsoft.CognitiveServices/accounts@2025-10-01-preview' = {
   name: accountName
@@ -25,8 +21,8 @@ resource foundryAccount 'Microsoft.CognitiveServices/accounts@2025-10-01-preview
     publicNetworkAccess: 'Enabled'
     // Local (API-key) auth is disabled to satisfy the enforced org policy
     // "disable local auth for Cognitive Services" (Safe Secrets Standard).
-    // The hosted skill runtime authenticates to Foundry via the function's managed
-    // identity (Cognitive Services User + OpenAI User roles), so no key is used.
+    // API Management authenticates to Foundry with its system-assigned managed identity.
+    // The Function identity has no direct model role, so deployed calls cannot bypass the gateway.
     disableLocalAuth: true
   }
 }
@@ -62,27 +58,9 @@ resource foundryModelDeployment 'Microsoft.CognitiveServices/accounts/deployment
   }
 }
 
-resource foundryCognitiveServicesUserRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(foundryAccount.id, managedIdentityPrincipalId, cognitiveServicesUserRoleId)
-  scope: foundryAccount
-  properties: {
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', cognitiveServicesUserRoleId)
-    principalId: managedIdentityPrincipalId
-    principalType: 'ServicePrincipal'
-  }
-}
-
-resource foundryOpenAiUserRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(foundryAccount.id, managedIdentityPrincipalId, cognitiveServicesOpenAiUserRoleId)
-  scope: foundryAccount
-  properties: {
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', cognitiveServicesOpenAiUserRoleId)
-    principalId: managedIdentityPrincipalId
-    principalType: 'ServicePrincipal'
-  }
-}
-
 output accountName string = foundryAccount.name
 output projectName string = foundryProject.name
 output projectEndpoint string = '${foundryAccount.properties.endpoints['AI Foundry API']}api/projects/${foundryProject.name}'
+output openAiEndpoint string = foundryAccount.properties.endpoints['OpenAI Language Model Instance API']
+output contentSafetyEndpoint string = foundryAccount.properties.endpoints['Content Safety']
 output modelDeploymentName string = foundryModelDeployment.name

@@ -9,8 +9,10 @@
     "AZURE_OPENAI_ENDPOINT": "https://<your-openai-account>.openai.azure.com/",
     "AZURE_OPENAI_DEPLOYMENT": "<your-deployment-name>",
 
-    "//policy": "Copy POLICY_MCP_SERVER_URL from `azd env get-values`; leave the client ID empty to use your developer credential.",
+    "//connectors": "Copy both MCP server URLs from `azd env get-values`; leave client IDs empty to use your developer credential.",
     "POLICY_MCP_SERVER_URL": "",
-    "POLICY_MCP_CLIENT_ID": ""
+    "POLICY_MCP_CLIENT_ID": "",
+    "QUEUE_MCP_SERVER_URL": "",
+    "QUEUE_MCP_CLIENT_ID": ""
   }
 }

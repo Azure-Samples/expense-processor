@@ -13,23 +13,23 @@ the deployed storage account) or for local experiments against Azurite.
 
 Examples
 --------
-    uv run scripts/read_decision.py --queue expense-approved
-    uv run scripts/read_decision.py --queue expense-review
-    uv run scripts/read_decision.py --queue expense-flagged
+    uv run --project src --no-sync python scripts/read_decision.py --queue expense-approved
+    uv run --project src --no-sync python scripts/read_decision.py --queue expense-review
+    uv run --project src --no-sync python scripts/read_decision.py --queue expense-flagged
 
     # Peek ALL three decision queues at once (handy right after sending a batch):
-    uv run scripts/read_decision.py --queue all --peek
+    uv run --project src --no-sync python scripts/read_decision.py --queue all --peek
 
     # Against the DEPLOYED account (Entra ID), auto-resolves the queue endpoint from your
     # azd env (OUTPUT_STORAGE_ACCOUNT). The identity used by azd needs the "Storage Queue
     # Data Reader" (peek) or "Message Processor" (receive+delete) role.
-    uv run scripts/read_decision.py --queue all --peek --cloud
+    uv run --project src --no-sync python scripts/read_decision.py --queue all --peek --cloud
 
     # Print the original queue payloads instead of the readable summary:
-    uv run scripts/read_decision.py --queue all --peek --cloud --raw
+    uv run --project src --no-sync python scripts/read_decision.py --queue all --peek --cloud --raw
 
     # Or point at a specific account explicitly:
-    uv run scripts/read_decision.py --queue expense-approved \
+    uv run --project src --no-sync python scripts/read_decision.py --queue expense-approved \
         --account-url https://<storageaccount>.queue.core.windows.net
 """
 from __future__ import annotations

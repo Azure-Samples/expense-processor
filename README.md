@@ -2,7 +2,7 @@
 
 A markdown-first Azure Functions hosted skill for queue-driven expense processing. Its trigger and
 instructions live in
-[`src/agents/expense_processor.agent.md`](src/agents/expense_processor.agent.md), and Azure Functions
+[`src/expense_processor.agent.md`](src/expense_processor.agent.md), and Azure Functions
 handles execution and scale-to-zero.
 
 ## What it does
@@ -11,6 +11,9 @@ handles execution and scale-to-zero.
   symbols, currency codes, words, or colloquial units.
 - 📚 **Picks the right policy:** lists the documents in Blob Storage and selects the one whose scope
   matches, then reads and applies it through a read-only Connector Namespace MCP server.
+- 🛡️ **Governs model calls:** sends deployed model traffic through an Azure API Management AI
+  Gateway with managed identity, token limits, prompt shielding, harmful-input filtering, and token
+  metrics.
 - 🚦 **Routes the decision:** `approve` → `expense-approved`, `review` → `expense-review`,
   `flag` / FX → `expense-flagged`.
 - 🔀 **Proves it's reasoning:** the same normalized 450 USD is auto-approved as travel but sent to
@@ -21,6 +24,10 @@ handles execution and scale-to-zero.
 - An [Azure subscription](https://azure.microsoft.com/free/)
 - [uv](https://docs.astral.sh/uv/)
 - [Azure Developer CLI (`azd`)](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd)
+
+The deployment creates an API Management **Developer** instance. This is the lowest tier that
+supports the sample's token-limit and Content Safety policies, but it has a recurring cost and no
+production SLA.
 
 ## Quickstart
 
@@ -37,19 +44,25 @@ queues remain empty. Verify the empty output queues:
 uv run --project src --no-sync python scripts/read_decision.py --queue all --peek --cloud
 ```
 
-Submit the three bundled demo expenses, wait up to a minute, and read the resulting decisions:
+Submit the three bundled demo expenses, allow up to two minutes for processing, and read the
+resulting decisions:
 
 ```bash
 uv run --project src --no-sync python scripts/setup_demo.py send-samples
 uv run --project src --no-sync python scripts/read_decision.py --queue all --peek --cloud
 ```
 
-`send-samples` skips submission when an output queue already contains a decision. To repeat the
-demo, receive and remove the existing decisions first, then run `send-samples` again:
+`send-samples` skips submission when an output queue already contains a decision. To reset the
+three output queues for a fresh demo, receive and remove their messages, then run `send-samples`
+again:
 
 ```bash
-uv run --project src --no-sync python scripts/read_decision.py --queue all --cloud
+uv run --project src --no-sync python scripts/read_decision.py --queue all --cloud --max 1000
 ```
+
+Omitting `--peek` deletes the messages it reads. This command clears the three output queues; it
+does not clear the input or poison queue. The `--no-sync` commands reuse the environment prepared by
+the initial `uv sync --project src` and do not contact PyPI.
 
 You should then see:
 
@@ -68,8 +81,8 @@ azd monitor --overview
 
 Look for successful `execute_tool azureblob_ListFolder_V4`,
 `execute_tool azureblob_GetFileContentByPath_V2`, and
-`execute_tool route_expense_decision` spans. See [Deploy](docs/deploy.md#show-the-telemetry) for the
-KQL queries that show each run and its complete correlated transaction.
+`execute_tool azurequeues_PutMessage_V2` spans, plus AI Gateway requests and token metrics. See
+[Deploy](docs/deploy.md#show-the-telemetry) for the portal walkthrough.
 
 Clean up with `azd down --purge`.
 
@@ -82,17 +95,19 @@ and set the model endpoint and deployment. No API key is needed; the runtime use
 `DefaultAzureCredential`, so sign in with `az login` or `azd auth login`. Policy lookup uses the
 deployed Connector Namespace because Connector Namespace has no local emulator. After
 `azd provision`, copy
-`POLICY_MCP_SERVER_URL` from `azd env get-values` into local settings and leave
-`POLICY_MCP_CLIENT_ID` empty so your developer credential is used.
+`POLICY_MCP_SERVER_URL` and `QUEUE_MCP_SERVER_URL` from `azd env get-values` into local settings
+and leave both MCP client IDs empty so your developer credential is used.
 
 ```bash
 azurite --silent --location .azurite               # terminal A
 cd src && uv run func start                         # terminal B
 uv run --project src --no-sync python scripts/send_expense.py --file samples/travel.txt   # terminal C
-uv run --project src --no-sync python scripts/read_decision.py --queue all --peek
+uv run --project src --no-sync python scripts/read_decision.py --queue all --peek --cloud
 ```
 
-The model call still uses Azure. For setup and Windows help, see
+The model call and both Connector Namespace MCP servers still use Azure. The local trigger reads
+Azurite, but decisions are written to the deployed Azure output queues because Connector Namespace
+has no local emulator. For setup and Windows help, see
 [Troubleshooting](docs/troubleshooting.md).
 
 ## How it works
@@ -110,6 +125,8 @@ flowchart LR
     end
 
     skill{{Expense Processor skill<br/>extract · select · apply · route}}
+    gateway{{API Management AI Gateway<br/>identity · token limits · content safety · metrics}}
+    model[(Microsoft Foundry<br/>gpt-5.4)]
 
     subgraph outbound["Azure Queue Storage · outbound"]
         approved[[expense-approved]]
@@ -120,15 +137,19 @@ flowchart LR
     msg --> inq
     inq -->|queue trigger| skill
     pdocs -->|Connector Namespace<br/>Blob MCP tools| skill
-    skill --> approved
-    skill --> review
-    skill --> flagged
+    skill -->|Responses API| gateway
+    gateway -->|managed identity| model
+    skill -->|Queue MCP| approved
+    skill -->|Queue MCP| review
+    skill -->|Queue MCP| flagged
 ```
 
 The runtime discovers the hosted skill's Markdown definition. Its front matter defines the queue
 trigger, and its body contains the instructions. A read-only Azure Blob MCP connector lists and
-reads policy documents with the Connector Namespace managed identity; one Python tool routes
-decisions to queues with the Function managed identity.
+reads policy documents, while a write-only Azure Queues MCP connector routes decisions to the three
+output queues. The Connector Namespace managed identity receives container-scoped Blob Reader and
+queue-scoped Message Sender roles. In Azure, model requests use the Function identity to enter the
+AI Gateway; API Management then calls Microsoft Foundry with its own managed identity.
 
 [How it works](docs/how-it-works.md) · [Use cases](docs/use-cases.md) ·
 [Customize](docs/customize.md) · [Deploy](docs/deploy.md) ·
@@ -139,6 +160,7 @@ decisions to queues with the Function managed identity.
 - [Hosted skills in Azure Functions](https://learn.microsoft.com/azure/azure-functions/functions-serverless-agents-runtime)
 - [Azure Functions Flex Consumption](https://learn.microsoft.com/azure/azure-functions/flex-consumption-plan)
 - [Connector Namespace](https://learn.microsoft.com/azure/connector-namespace/connector-namespace-overview)
+- [Generative AI gateway capabilities](https://learn.microsoft.com/azure/api-management/genai-gateway-capabilities)
 - [uv](https://docs.astral.sh/uv/) · [PEP 723: inline script metadata](https://peps.python.org/pep-0723/)
 
 ## License
