@@ -98,63 +98,10 @@ generated `gen_ai.agent.name` instead of the hosted skill's friendly name. Use *
 **Logs** to verify and inspect the complete correlated spans. See
 [Troubleshooting](troubleshooting.md#application-insights-agents-doesnt-load-or-show-the-hosted-skill-correctly).
 
-To query the runs directly, open the Logs view:
-
-```bash
-azd monitor --logs
-```
-
-Then run:
-
-```kusto
-AppDependencies
-| where TimeGenerated > ago(30m)
-| where Name startswith "agent.run"
-| project
-    TimeGenerated,
-    OperationId,
-    Name,
-    Success,
-    DurationMs,
-    Model = tostring(Properties["af.agent.model"]),
-    Outcome = tostring(Properties["af.agent.outcome"]),
-    ToolCalls = toint(Properties["af.agent.tool_call_count"])
-| order by TimeGenerated desc
-```
-
-Select an `OperationId`, then use this query to show the full correlated transaction:
-
-```kusto
-let operationId = "<operation-id>";
-union AppRequests, AppDependencies, AppTraces, AppExceptions
-| where OperationId == operationId
-| project TimeGenerated, itemType, Name, Message, Success, DurationMs
-| order by TimeGenerated asc
-```
-
 Telemetry can take a few minutes to become queryable. Input and response content are not captured in
 the cloud by default; the sample exports metadata, model/tool spans, outcomes, durations, and token
 usage without recording the expense text. The gateway diagnostic also omits request and response
 bodies.
-
-Query gateway token metrics with:
-
-```kusto
-AppMetrics
-| where TimeGenerated > ago(30m)
-| where Name == "azure.ai_gateway.client.token.usage"
-| where tostring(Properties["Service Name"]) startswith "apim-expense-skill-"
-| project
-    TimeGenerated,
-    TokenType = tostring(Properties["gen_ai.token.type"]),
-    Model = tostring(Properties["ModelDeployment"]),
-    Sum,
-    Count
-| order by TimeGenerated desc
-```
-
-Depending on the Application Insights table experience, the same custom metrics can appear in
-`customMetrics` with lowercase column names.
 
 ## What gets deployed
 

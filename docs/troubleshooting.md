@@ -15,16 +15,8 @@ ingestion is healthy. Use **Search** or **Logs** to verify the data independentl
 identifier might also appear as `gen_ai.agent.name`, while the friendly hosted-skill name remains
 available as `af.agent.name` on the parent `agent.run` span.
 
-Open the correlated telemetry with `azd monitor --logs` and query:
-
-```kusto
-AppDependencies
-| where TimeGenerated > ago(30m)
-| where Name startswith "agent.run"
-    or tostring(Properties["gen_ai.operation.name"]) in ("invoke_agent", "chat", "execute_tool")
-| project TimeGenerated, OperationId, Name, Success, DurationMs, Properties
-| order by TimeGenerated desc
-```
+Open a recent operation in Application Insights **Search** to inspect its correlated model and tool
+spans.
 
 ## `403` from the scripts against the account
 

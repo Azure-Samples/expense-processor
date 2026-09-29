@@ -147,7 +147,7 @@ model and tool child spans. Setting `telemetryMode` to `OpenTelemetry` in
 [`src/host.json`](../src/host.json) also correlates Functions host telemetry with those worker spans.
 API Management uses its managed identity to write request telemetry and token metrics to the same
 Application Insights resource. Gateway diagnostics do not capture prompt or response bodies.
-See the [deployment telemetry walkthrough](deploy.md#show-the-telemetry) for the portal flow and KQL.
+See the [deployment telemetry walkthrough](deploy.md#show-the-telemetry) for the portal flow.
 
 ## Under the hood: message encoding
 

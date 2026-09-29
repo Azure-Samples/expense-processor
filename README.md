@@ -82,8 +82,7 @@ azd monitor --overview
 Look for successful `execute_tool azureblob_ListFolder_V4`,
 `execute_tool azureblob_GetFileContentByPath_V2`, and
 `execute_tool azurequeues_PutMessage_V2` spans, plus AI Gateway requests and token metrics. See
-[Deploy](docs/deploy.md#show-the-telemetry) for the KQL queries that show each run and its complete
-correlated transaction.
+[Deploy](docs/deploy.md#show-the-telemetry) for the portal walkthrough.
 
 Clean up with `azd down --purge`.
 
