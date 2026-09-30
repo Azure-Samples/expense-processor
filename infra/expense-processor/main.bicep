@@ -249,10 +249,6 @@ module monitoring '../common/monitoring.bicep' = {
   }
 }
 
-resource deployedStorage 'Microsoft.Storage/storageAccounts@2023-05-01' existing = {
-  name: storageAccountName
-}
-
 // Outputs
 output AZURE_LOCATION string = location
 output AZURE_FUNCTION_NAME string = api.outputs.SERVICE_API_NAME
@@ -269,5 +265,5 @@ output POLICY_CONNECTOR_NAMESPACE_NAME string = policyConnector.outputs.connecto
 output POLICY_CONNECTOR_CONNECTION_NAME string = policyConnector.outputs.blobConnectionName
 output QUEUE_CONNECTOR_CONNECTION_NAME string = policyConnector.outputs.queueConnectionName
 output APPLICATIONINSIGHTS_RESOURCE_ID string = monitoring.outputs.resourceId
-output EXPENSE_QUEUE_SERVICE_URI string = deployedStorage.properties.primaryEndpoints.queue
+output EXPENSE_QUEUE_SERVICE_URI string = storageQueues.outputs.queueServiceUri
 output OUTPUT_QUEUE_NAMES array = outputQueueNames

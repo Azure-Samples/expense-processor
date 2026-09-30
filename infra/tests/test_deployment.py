@@ -68,6 +68,15 @@ class DeploymentTests(unittest.TestCase):
         self.assertNotIn("expenseStorageAccountName", source)
         self.assertNotIn("Microsoft.Authorization/roleAssignments", source)
 
+    def test_queue_endpoint_is_read_only_after_storage_creation(self):
+        endpoint = self.processor_template["outputs"]["EXPENSE_QUEUE_SERVICE_URI"]["value"]
+        self.assertIn("'storageQueues'", endpoint)
+        queues = module(self.processor_template, "storageQueues")
+        self.assertIn("'storage'", " ".join(queues["dependsOn"]))
+        self.assertIn("'storage'", parameters(queues)["storageAccountName"])
+        self.assertIn("primaryEndpoints.queue", queues["properties"]["template"]["outputs"]["queueServiceUri"]["value"])
+        self.assertIn("'expenseProcessor'", " ".join(self.mcp["dependsOn"]))
+
     def test_mcp_dependencies_are_local_to_its_resource_group(self):
         app = parameters(module(self.mcp_template, "expenseMcpApp"))
         for field, name in (
