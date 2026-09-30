@@ -1,0 +1,10 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "FUNCTIONS_WORKER_RUNTIME": "python",
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "ExpenseInputStorage": "UseDevelopmentStorage=true",
+    "ExpenseStorage__queueServiceUri": "https://<expense-storage-account>.queue.core.windows.net",
+    "//identity": "Locally omit credential and clientId to use your signed-in developer identity. In Azure these are configured by Bicep."
+  }
+}

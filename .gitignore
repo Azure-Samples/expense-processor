@@ -1,5 +1,6 @@
 # Local settings & secrets — never commit
 src/local.settings.json
+mcp-server/local.settings.json
 local.settings.json
 .env
 .env.*
@@ -27,6 +28,7 @@ dist/
 # requirements.txt is generated from src/pyproject.toml + src/uv.lock by the azd
 # `prepackage` hook (uv export); dependencies are edited in pyproject.toml, not here.
 src/requirements.txt
+mcp-server/requirements.txt
 
 # Azurite
 .azurite/

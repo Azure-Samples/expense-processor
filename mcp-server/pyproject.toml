@@ -1,0 +1,11 @@
+[project]
+name = "expense-request-mcp-server"
+version = "0.1.0"
+description = "Azure Functions MCP tools for submitting expenses and inspecting demo decisions."
+requires-python = ">=3.13,<3.14"
+dependencies = [
+    "azure-functions==2.3.0",
+    "azure-identity>=1.19.0",
+    "azure-storage-queue>=12.17.0",
+    "mcp>=1.12,<2",
+]

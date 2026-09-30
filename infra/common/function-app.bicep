@@ -78,3 +78,4 @@ module api 'br/public:avm/res/web/site:0.15.1' = {
 }
 
 output SERVICE_API_NAME string = api.outputs.name
+output SERVICE_API_HOSTNAME string = api.outputs.defaultHostname

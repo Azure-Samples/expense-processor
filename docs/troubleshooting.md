@@ -74,7 +74,7 @@ blocked the request; inspect the APIM request telemetry before changing a thresh
 The Function app shares one counter: 100,000 tokens per minute and 1,000,000 tokens per UTC day.
 Wait for the rate window or daily quota to reset. Responses include `Retry-After`,
 `x-ratelimit-remaining-tokens`, `x-quota-remaining-tokens`, and `x-tokens-consumed` when available.
-Raise the limits in [`infra/app/ai-gateway-policy.xml`](../infra/app/ai-gateway-policy.xml) only
+Raise the limits in [`infra/expense-processor/ai-gateway-policy.xml`](../infra/expense-processor/ai-gateway-policy.xml) only
 after reviewing expected model cost.
 
 ## Gateway route returns `404`

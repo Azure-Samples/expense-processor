@@ -25,8 +25,17 @@ genuinely reasoning rather than matching a fixed schema.
 
 ## Architecture
 
+The user-facing [MCP Function App](mcp.md) is separate from the Expense Processor skill. Its create
+tool uses a queue output binding; its list/reset tools use the Queue SDK. The skill evaluates
+expenses using policies and Connector Namespace tools; the MCP Function App does not call a model.
+The apps and their dependencies are deployed in separate resource groups. Each owns its storage,
+plan, identity, Application Insights and Log Analytics workspace; the integration passes the
+expense queue endpoint and grants the MCP identity queue-scoped access.
+
 ```mermaid
 flowchart LR
+    user([User + MCP-connected assistant])
+    mcp{{MCP Function App<br/>create · list · reset}}
     msg([raw message<br/>text · JSON · key-value])
 
     subgraph inbound["Azure Queue Storage · inbound"]
@@ -49,6 +58,8 @@ flowchart LR
     end
 
     msg -->|any format| inq
+    user <-->|Streamable HTTP| mcp
+    mcp -->|queue output binding| inq
     inq -->|queue trigger| skill
     pdocs -. managed identity .-> connector
     connector -. azureblob_ListFolder_V4<br/>azureblob_GetFileContentByPath_V2 .-> skill
@@ -58,6 +69,9 @@ flowchart LR
     connector --> approved
     connector --> review
     connector --> flagged
+    mcp <-->|SDK peek / clear| approved
+    mcp <-->|SDK peek / clear| review
+    mcp <-->|SDK peek / clear| flagged
 ```
 
 It runs on **Azure Functions Flex Consumption**, so it scales to zero and costs nothing when the
@@ -146,7 +160,8 @@ exporter without application instrumentation code. The runtime emits a parent `a
 model and tool child spans. Setting `telemetryMode` to `OpenTelemetry` in
 [`src/host.json`](../src/host.json) also correlates Functions host telemetry with those worker spans.
 API Management uses its managed identity to write request telemetry and token metrics to the same
-Application Insights resource. Gateway diagnostics do not capture prompt or response bodies.
+processor Application Insights resource. The MCP app has a separate Application Insights resource
+and Log Analytics workspace in its own resource group. Gateway diagnostics do not capture prompt or response bodies.
 See the [deployment telemetry walkthrough](deploy.md#show-the-telemetry) for the portal flow.
 
 ## Under the hood: message encoding
@@ -177,7 +192,18 @@ src/
   pyproject.toml               # function app dependencies (uv is the source of truth)
   uv.lock                      # pinned dependency lockfile
   local.settings.json.sample   # app settings reference
-infra/                         # azd / Bicep: Functions, AI Gateway, Foundry, storage, Connector Namespace, identity, RBAC
+mcp-server/                    # separate Functions MCP app: create / list decisions / reset demo
+  function_app.py              # MCP decorators, queue output binding, SDK peek/clear
+  host.json                   # MCP extension bundle, key requirement, raw queue encoding
+  pyproject.toml               # independent app dependencies
+.vscode/mcp.json               # local/remote client setup; remote key is a password prompt
+infra/
+  main.bicep                   # one subscription deployment, two app resource groups
+  expense-processor/           # hosted-skill infrastructure and its own dependencies
+  expense-mcp/                 # MCP infrastructure and its own dependencies
+  integration/                 # cross-group queue access grants
+  common/                      # reusable code; resources are instantiated separately per app
+  tests/                       # compiled deployment layout checks
 scripts/                       # uv run helper scripts: send / read / set-policy (PEP 723, self-describing deps)
 samples/                       # varied formats and amount notation + a stricter travel policy for the swap demo
 azure.yaml                     # azd service definition + hooks (generate requirements.txt, seed policies)

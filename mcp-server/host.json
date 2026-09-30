@@ -1,0 +1,27 @@
+{
+  "version": "2.0",
+  "extensions": {
+    "queues": {
+      "messageEncoding": "none"
+    },
+    "mcp": {
+      "serverName": "Expense demo",
+      "serverVersion": "0.1.0",
+      "instructions": "Create expenses from the user's original text, then list available decisions. Processing is asynchronous. Listing peeks at at most 32 visible messages per outcome queue; it is not request history or pending status. Reset deletes all output decisions for all demo users: obtain explicit user approval before setting confirm=true. It does not cancel queued or running requests.",
+      "system": {
+        "webhookAuthorizationLevel": "System"
+      }
+    }
+  },
+  "logging": {
+    "logLevel": {
+      "default": "Information",
+      "Azure.Core": "Warning",
+      "Azure.Storage.Queues": "Warning"
+    }
+  },
+  "extensionBundle": {
+    "id": "Microsoft.Azure.Functions.ExtensionBundle.Preview",
+    "version": "[4.*, 5.0.0)"
+  }
+}
