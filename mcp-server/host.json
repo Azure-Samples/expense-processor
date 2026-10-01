@@ -16,6 +16,7 @@
   "logging": {
     "logLevel": {
       "default": "Warning",
+      "Function": "Information",
       "Azure.Core": "Error",
       "Azure.Storage.Queues": "Error"
     }

@@ -13,6 +13,8 @@ from azure.identity import DefaultAzureCredential
 from azure.storage.queue import QueueClient
 from mcp.types import CallToolResult, TextContent
 
+logging.getLogger("azure").setLevel(logging.WARNING)
+
 app = func.FunctionApp()
 
 INPUT_QUEUE = "expense-requests"
@@ -77,7 +79,7 @@ def create_expense_request(message: func.Out[str], request: str) -> str:
         raise ValueError("The encoded request must fit within the 64 KiB queue message limit.")
 
     message.set(payload)
-    logging.info("Submitting expense %s through the queue output binding.", expense_id)
+    logging.info("Submitting expense %s.", expense_id)
     return json.dumps({
         "expenseId": expense_id,
         "status": "submitted",
