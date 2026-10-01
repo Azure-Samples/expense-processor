@@ -83,9 +83,33 @@ Ask Copilot to submit a request. For example:
 
 > Submit an expense for my flight to the customer meeting. Contoso Air charged four hundred and fifty dollars. Preserve my original wording when submitting it.
 
-You should see Copilot invoke the relevant tool in the server to submit the request and return a request ID.
+Copilot invokes `create_expense_request` and presents the submission result. For example:
+
+> Expense submitted successfully with your original wording preserved.
+>
+> **Expense ID:** `EXP-3079b9c0106e4ba8bcc66987f41669b1`
+>
+> **Status:** Submitted for asynchronous evaluation.
+
+Each submission generates its own expense ID. Submission confirms that the request was queued,
+not that it has been approved.
 
 Allow up to two minutes for processing, then ask:
+
+> what's the submission status
+
+Copilot calls `list_expense_decisions` and summarizes the matching decision. An example response
+from a run where the policy document could not be retrieved:
+
+> Expense `EXP-3079b9c0106e4ba8bcc66987f41669b1` **needs manual review**.
+>
+> - **Amount:** $450 USD
+> - **Vendor:** Contoso Air
+> - **Category:** Travel
+> - **Reason:** The applicable expense policy document could not be retrieved, so an automated approval decision could not be made.
+> - **Original wording:** Preserved exactly.
+
+To see all available decisions, ask:
 
 > List the available expense decisions and explain the policy and reason for each.
 

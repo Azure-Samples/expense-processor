@@ -17,6 +17,51 @@ programming model of triggers and bindings. Find more samples at
 | `list_expense_decisions()` | Shows available expense decisions grouped as approved, needs review, and flagged. |
 | `reset_demo(confirm)` | Clears demo decisions after your confirmation so you can run the demo again. Does not cancel pending requests. |
 
+### Example MCP tool with triggers and bindings
+
+The create tool combines an MCP tool trigger with a queue output binding. This condensed version
+of [`mcp-server/function_app.py`](../mcp-server/function_app.py) omits validation and logging:
+
+```python
+import json
+from uuid import uuid4
+
+import azure.functions as func
+
+app = func.FunctionApp()
+
+@app.mcp_tool()
+@app.mcp_tool_property(
+    arg_name="request",
+    description="The user's original expense request.",
+    is_required=True,
+)
+@app.queue_output(
+    arg_name="message",
+    queue_name="expense-requests",
+    connection="ExpenseInputStorage",
+)
+def create_expense_request(message: func.Out[str], request: str) -> str:
+    """Submit one expense for asynchronous evaluation."""
+    expense_id = f"EXP-{uuid4().hex}"
+    message.set(json.dumps({"expenseId": expense_id, "requestText": request}))
+    return json.dumps({"expenseId": expense_id, "status": "submitted"})
+```
+
+- **`@app.mcp_tool()`** exposes the function as an MCP tool. Its name and docstring describe
+  the tool to clients, and its signature supplies the input types.
+- **`@app.mcp_tool_property(...)`** describes the `request` argument so an assistant knows what
+  to pass. The output-binding parameter `message` is supplied by Functions, not the MCP client.
+- **`@app.queue_output(...)`** connects `message` to the input queue. Calling `message.set(...)`
+  supplies the payload; the Functions host sends it using the configured `ExpenseInputStorage`
+  connection.
+- **The return value** goes back to the MCP client. It reports submission, not an approval;
+  the hosted skill processes the queued request separately.
+
+You write a Python function and compose triggers and bindings, just as with other Azure Functions.
+The MCP extension handles tool discovery and protocol requests, while the queue binding handles
+the storage write without a Queue SDK call in the tool.
+
 ## Deploy and connect
 
 Deploy the sample using the [quickstart](../README.md#quickstart).
@@ -111,9 +156,8 @@ The inbound and outbound queues share the same expense storage account, as in th
 ## Storage and identity boundary
 
 The MCP Function App and its hosting and monitoring resources are in `rg-<environment>-mcp`.
-Expense requests and decisions are stored in the processor's storage account in `rg-<environment>`,
-accessed through the identity-based `ExpenseStorage` connection.
-Submission uses `ExpenseInputStorage` with the same endpoint and identity in Azure.
+Expense requests and decisions are stored in the hosted-skill app's storage
+account. The MCP app accesses the decision queues through the identity-based `ExpenseStorage` connection. Submission uses `ExpenseInputStorage` with the same endpoint and identity in Azure.
 
 | Scope | MCP app identity role |
 |---|---|
@@ -138,13 +182,6 @@ credential for secretless platform sign-in. The MCP webhook authorization level 
 in `host.json`, so no additional Functions system key is required. App Service Authentication
 still requires OAuth for the deployed endpoint; Python tool handlers do not implement authentication.
 
-## Run the MCP server locally
-
-Follow [Run it locally](../README.md#run-it-locally) in the main README to configure and start
-Azurite, the hosted skill, and the MCP server. The same tools and prompts work through the local
-MCP endpoint; requests are processed locally using Azure model and policy services, and decisions
-are written to Azure output queues.
-
 ## Validate the tools
 
 The tests exercise the real Functions MCP wrappers and output-binding metadata, with mocked
@@ -157,7 +194,7 @@ uv run --project mcp-server python -m unittest discover -s mcp-server/tests -v
 Deploy just the MCP app after changes with `azd deploy mcp`. The scripts are also available
 for raw-input fixtures, policy changes, and operator inspection.
 
-## Intentional limitations
+## Known limitations
 
 - Listing is the same bounded snapshot as the script's `--peek` mode: **at most 32
   visible messages per output queue**, not full history. Repeating the call does not page forward.
