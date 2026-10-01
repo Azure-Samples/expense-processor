@@ -22,3 +22,5 @@ resource queues 'Microsoft.Storage/storageAccounts/queueServices/queues@2023-05-
     name: queueName
   }
 ]
+
+output queueServiceUri string = storageAccount.properties.primaryEndpoints.queue

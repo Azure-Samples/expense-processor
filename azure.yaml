@@ -3,6 +3,7 @@ metadata:
   template: functions-hosted-skill-expense-processor@1.0.0
 services:
   api:
+    resourceGroup: ${EXPENSE_PROCESSOR_RESOURCE_GROUP}
     project: ./src
     language: python
     host: function
@@ -10,6 +11,21 @@ services:
       # Generate src/requirements.txt from src/pyproject.toml + src/uv.lock right before
       # packaging, so the Functions remote build (Oryx) has one while deps stay defined in
       # pyproject.toml. The file is gitignored — uv is the single source of truth.
+      prepackage:
+        posix:
+          shell: sh
+          continueOnError: false
+          run: uv export --format requirements-txt --no-hashes --no-dev --no-emit-project -o requirements.txt
+        windows:
+          shell: pwsh
+          continueOnError: false
+          run: uv export --format requirements-txt --no-hashes --no-dev --no-emit-project -o requirements.txt
+  mcp:
+    resourceGroup: ${EXPENSE_MCP_RESOURCE_GROUP}
+    project: ./mcp-server
+    language: python
+    host: function
+    hooks:
       prepackage:
         posix:
           shell: sh

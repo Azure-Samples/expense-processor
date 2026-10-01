@@ -1,0 +1,9 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "FUNCTIONS_WORKER_RUNTIME": "python",
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "ExpenseInputStorage": "UseDevelopmentStorage=true",
+    "ExpenseStorage__queueServiceUri": "https://<OUTPUT_STORAGE_ACCOUNT>.queue.core.windows.net"
+  }
+}

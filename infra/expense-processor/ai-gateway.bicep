@@ -69,6 +69,10 @@ resource openAiBackend 'Microsoft.ApiManagement/service/backends@2024-06-01-prev
 resource contentSafetyBackend 'Microsoft.ApiManagement/service/backends@2024-06-01-preview' = {
   parent: apiManagement
   name: contentSafetyBackendId
+  // APIM can reject concurrent child updates while its service container is activating.
+  dependsOn: [
+    openAiBackend
+  ]
   properties: {
     title: 'Microsoft Foundry Content Safety'
     description: 'Existing Microsoft Foundry Content Safety endpoint'
@@ -90,6 +94,9 @@ resource contentSafetyBackend 'Microsoft.ApiManagement/service/backends@2024-06-
 resource responsesApi 'Microsoft.ApiManagement/service/apis@2024-06-01-preview' = {
   parent: apiManagement
   name: apiId
+  dependsOn: [
+    contentSafetyBackend
+  ]
   properties: {
     apiType: 'http'
     type: 'http'
@@ -132,6 +139,9 @@ resource responsesOperation 'Microsoft.ApiManagement/service/apis/operations@202
 resource responsesPolicy 'Microsoft.ApiManagement/service/apis/policies@2024-06-01-preview' = {
   parent: responsesApi
   name: 'policy'
+  dependsOn: [
+    responsesOperation
+  ]
   properties: {
     format: 'rawxml'
     value: gatewayPolicy
@@ -141,6 +151,9 @@ resource responsesPolicy 'Microsoft.ApiManagement/service/apis/policies@2024-06-
 resource applicationInsightsLogger 'Microsoft.ApiManagement/service/loggers@2024-06-01-preview' = {
   parent: apiManagement
   name: loggerId
+  dependsOn: [
+    responsesPolicy
+  ]
   properties: {
     loggerType: 'applicationInsights'
     description: 'Managed-identity Application Insights logger for AI Gateway telemetry'
