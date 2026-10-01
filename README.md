@@ -27,6 +27,7 @@ A separate [Functions hosted MCP server](docs/mcp.md) lets an MCP-connected assi
 - [uv](https://docs.astral.sh/uv/)
 - [Azure Developer CLI (`azd`)](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd)
 - An MCP client such as GitHub Copilot agent mode in VS Code, for request submission
+- Permission to create Microsoft Entra app registrations, for MCP sign-in
 
 The deployment creates an API Management **Developer** instance. This is the lowest tier that
 supports the sample's token-limit and Content Safety policies, but it has a recurring cost and no
@@ -38,8 +39,14 @@ production SLA.
 uv sync --project src
 uv sync --project mcp-server
 azd auth login
+azd env set PRE_AUTHORIZED_CLIENT_IDS aebc6443-996d-45c2-90f0-388ff96faa56
 azd up
 ```
+
+The client ID above identifies
+VS Code and explicitly authorizes it to sign in to this MCP server. Other clients are not
+automatically authorized: configure their application IDs in `PRE_AUTHORIZED_CLIENT_IDS` as a
+comma-separated list, then provision again.
 
 One `azd up` provisions and deploys both apps in separate resource groups:
 
@@ -47,6 +54,10 @@ One `azd up` provisions and deploys both apps in separate resource groups:
 |---|---|
 | `rg-<environment>` | Expense Processor app, expense queues and policies, Connector Namespace, AI Gateway, Foundry, hosting plan, identity, Application Insights, and Log Analytics workspace |
 | `rg-<environment>-mcp` | MCP app, storage account, hosting plan, identity, Application Insights, and Log Analytics workspace |
+
+The deployment also creates a Microsoft Entra app registration for MCP authentication and
+preauthorizes the clients you configured. Azure resource permissions alone do not grant permission to create
+Entra app registrations.
 
 ## Test the expense processor
 
@@ -57,12 +68,13 @@ You can use the VS Code Copilot to submit expense requests conversationally thro
 ### Connect in VS Code Copilot
 
 1. Run `azd env get-values` and copy `EXPENSE_MCP_SERVER_URL`, the full endpoint including
-   `/runtime/webhooks/mcp`. In the Azure portal, open the MCP Function App and copy the
-   `mcp_extension` system key from **App keys** on the left menu.
-
-1. Open [`.vscode/mcp.json`](.vscode/mcp.json). Click **Start** above **expense-demo-azure**, and enter the endpoint and key when prompted. Keep **expense-demo-local** stopped while using the deployed server.
-
-1. Open Copilot Chat in **Agent** mode and enable the expense server's tools. Approve tool calls
+   `/runtime/webhooks/mcp`.
+2. Open [`.mcp.json`](.mcp.json) and set **expenseRemoteServer**'s `url` to that endpoint.
+   In VS Code, run **MCP: Add Server** from the Command Palette, select **HTTP**, and enter the
+   endpoint with the name **expenseRemoteServer**. Start it using **MCP: List Servers**.
+   Keep **expenseLocalServer** stopped while using the deployed server.
+3. When prompted, sign in with an account in the deployment's Microsoft Entra tenant.
+4. Open Copilot Chat in **Agent** mode and enable the expense server's tools. Approve tool calls
    when prompted.
 
 ### Submit expenses and list decisions
@@ -168,8 +180,9 @@ cd mcp-server && uv run func start --port 7072
 
 ### Test locally with Copilot
 
-1. Open `.vscode/mcp.json` and stop **expense-demo-azure**.
-2. Start **expense-demo-local** at `http://localhost:7072/runtime/webhooks/mcp`.
+1. In VS Code's **MCP: List Servers**, stop **expenseRemoteServer**.
+2. Use **MCP: Add Server** to register the HTTP endpoint for **expenseLocalServer** from
+   [`.mcp.json`](.mcp.json): `http://localhost:7072/runtime/webhooks/mcp`. Start the local server.
 3. In Copilot **Agent** mode, submit expenses and list decisions using the same prompts and tool
    approvals as in [Test the expense processor](#test-the-expense-processor).
 

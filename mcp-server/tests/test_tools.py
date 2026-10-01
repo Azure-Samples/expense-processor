@@ -200,9 +200,9 @@ class ConfigurationTests(unittest.TestCase):
             self.assertEqual(properties[0]["propertyType"], property_type)
             self.assertTrue(properties[0]["isRequired"])
 
-    def test_host_requires_key_and_preserves_raw_message_encoding(self):
+    def test_host_allows_platform_auth_and_preserves_raw_message_encoding(self):
         settings = json.loads((Path(__file__).parents[1] / "host.json").read_text())
-        self.assertEqual(settings["extensions"]["mcp"]["system"]["webhookAuthorizationLevel"], "System")
+        self.assertEqual(settings["extensions"]["mcp"]["system"]["webhookAuthorizationLevel"], "Anonymous")
         self.assertEqual(settings["extensions"]["queues"]["messageEncoding"], "none")
 
     def test_local_settings_send_to_the_processors_azurite_and_read_from_azure(self):

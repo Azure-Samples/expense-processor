@@ -4,6 +4,8 @@ param location string = resourceGroup().location
 param tags object = {}
 @description('Expense queue endpoint supplied by the processor deployment, accessed with this app identity.')
 param expenseQueueServiceUri string
+param preAuthorizedClientIds array
+param serviceManagementReference string = ''
 
 var packageContainerName = 'mcp-app-package'
 var identityName = 'mi-expense-mcp-${resourceToken}'
@@ -24,6 +26,18 @@ module identity 'br/public:avm/res/managed-identity/user-assigned-identity:0.4.1
     name: identityName
     location: location
     tags: tags
+  }
+}
+
+module entra './entra.bicep' = {
+  name: 'expenseMcpEntra'
+  params: {
+    appUniqueName: '${name}-app'
+    appDisplayName: 'Expense MCP server (${name})'
+    functionAppHostname: '${name}.azurewebsites.net'
+    managedIdentityPrincipalId: identity.outputs.principalId
+    preAuthorizedClientIds: preAuthorizedClientIds
+    serviceManagementReference: serviceManagementReference
   }
 }
 
@@ -77,6 +91,12 @@ module app '../common/function-app.bicep' = {
   params: {
     name: name
     serviceName: 'mcp'
+    alwaysReady: [
+      {
+        name: 'http'
+        instanceCount: 1
+      }
+    ]
     location: location
     tags: tags
     applicationInsightsName: monitoring.outputs.name
@@ -87,7 +107,54 @@ module app '../common/function-app.bicep' = {
     deploymentStorageContainerName: packageContainerName
     identityId: identity.outputs.resourceId
     identityClientId: identity.outputs.clientId
+    authSettings: {
+      platform: {
+        enabled: true
+        runtimeVersion: '~1'
+      }
+      globalValidation: {
+        requireAuthentication: true
+        unauthenticatedClientAction: 'Return401'
+        redirectToProvider: 'azureactivedirectory'
+      }
+      httpSettings: {
+        requireHttps: true
+        routes: {
+          apiPrefix: '/.auth'
+        }
+        forwardProxy: {
+          convention: 'NoProxy'
+        }
+      }
+      identityProviders: {
+        azureActiveDirectory: {
+          enabled: true
+          registration: {
+            openIdIssuer: '${environment().authentication.loginEndpoint}${tenant().tenantId}/v2.0'
+            clientId: entra.outputs.applicationId
+            clientSecretSettingName: 'OVERRIDE_USE_MI_FIC_ASSERTION_CLIENTID'
+          }
+          login: {
+            loginParameters: ['scope=openid profile email']
+          }
+          validation: {
+            allowedAudiences: [entra.outputs.identifierUri]
+            defaultAuthorizationPolicy: {
+              allowedApplications: union([entra.outputs.applicationId], preAuthorizedClientIds)
+            }
+          }
+        }
+      }
+      login: {
+        tokenStore: {
+          enabled: false
+        }
+      }
+    }
     appSettings: {
+      WEBSITE_AUTH_PRM_DEFAULT_WITH_SCOPES: '${entra.outputs.identifierUri}/user_impersonation'
+      WEBSITE_AUTH_AAD_ALLOWED_TENANTS: tenant().tenantId
+      OVERRIDE_USE_MI_FIC_ASSERTION_CLIENTID: identity.outputs.clientId
       ExpenseInputStorage__queueServiceUri: expenseQueueServiceUri
       ExpenseInputStorage__credential: 'managedidentity'
       ExpenseInputStorage__clientId: identity.outputs.clientId

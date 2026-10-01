@@ -11,8 +11,10 @@ param storageAccountName string
 param deploymentStorageContainerName string
 param instanceMemoryMB int = 2048
 param maximumInstanceCount int = 100
+param alwaysReady array = []
 param identityId string = ''
 param identityClientId string = ''
+param authSettings object = {}
 
 var applicationInsightsIdentity = 'Authorization=AAD;ClientId=${identityClientId}'
 
@@ -61,10 +63,10 @@ module api 'br/public:avm/res/web/site:0.15.1' = {
           }
         }
       }
-      scaleAndConcurrency: {
+      scaleAndConcurrency: union({
         instanceMemoryMB: instanceMemoryMB
         maximumInstanceCount: maximumInstanceCount
-      }
+      }, empty(alwaysReady) ? {} : { alwaysReady: alwaysReady })
       runtime: {
         name: runtimeName
         version: runtimeVersion
@@ -74,6 +76,7 @@ module api 'br/public:avm/res/web/site:0.15.1' = {
       alwaysOn: false
     }
     appSettingsKeyValuePairs: allAppSettings
+    authSettingV2Configuration: empty(authSettings) ? null : authSettings
   }
 }
 

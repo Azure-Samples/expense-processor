@@ -4,6 +4,8 @@
   "parameters": {
     "environmentName": { "value": "${AZURE_ENV_NAME}" },
     "location": { "value": "${AZURE_LOCATION}" },
-    "principalId": { "value": "${AZURE_PRINCIPAL_ID}" }
+    "principalId": { "value": "${AZURE_PRINCIPAL_ID}" },
+    "serviceManagementReference": { "value": "${SERVICE_MANAGEMENT_REFERENCE}" },
+    "preAuthorizedClientIds": { "value": "${PRE_AUTHORIZED_CLIENT_IDS}" }
   }
 }

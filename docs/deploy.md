@@ -8,6 +8,9 @@ queues and you can demonstrate the requests arriving and the hosted skill routin
 
 - An **Azure subscription** with permission to create Functions, Storage, Microsoft Foundry, API
   Management, Connector Namespace preview resources, and role assignments.
+- Permission to create Microsoft Entra app registrations and service principals in the deployment
+  tenant. The Microsoft Graph Bicep extension creates the MCP authentication registration;
+  Azure subscription Contributor/Owner permissions do not provide this directory permission.
 - [Azure Developer CLI (`azd`)](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd).
 - [uv](https://docs.astral.sh/uv/): the `prepackage` hook runs `uv export` to generate
   `requirements.txt`, and the deployment hooks and helper scripts run with `uv run`.
@@ -18,11 +21,21 @@ queues and you can demonstrate the requests arriving and the hosted skill routin
 uv sync --project src
 uv sync --project mcp-server
 azd auth login
-azd up
+azd env set PRE_AUTHORIZED_CLIENT_IDS aebc6443-996d-45c2-90f0-388ff96faa56
 ```
+
+`PRE_AUTHORIZED_CLIENT_IDS` is required:
+the ID above authorizes VS Code. Other MCP clients require their own application IDs in this
+comma-separated list.
 
 The explicit sync commands prepare both app environments once. The presentation commands below use
 `--no-sync`, so they never contact PyPI during the demo.
+
+Provision and deploy:
+
+```bash
+azd up
+```
 
 `azd up` prompts for an environment name, subscription, and region on first run, then:
 
@@ -142,7 +155,12 @@ bodies.
   managed identity, Application Insights and Log Analytics workspace. It accesses the processor's
   expense queues through `ExpenseInputStorage` for submission and `ExpenseStorage` for listing
   and reset. Both connections use the same Azure queue endpoint and identity. The endpoint requires
-  the `mcp_extension` system key; see [client setup and scoped roles](mcp.md).
+  Microsoft Entra OAuth sign-in through App Service Authentication; see
+  [client setup and scoped roles](mcp.md). No access key is required.
+- **MCP authentication registration:** a single-tenant Entra application and service principal,
+  an exposed `user_impersonation` scope, preauthorization for the configured clients, and a managed-identity federated
+  credential for platform sign-in without a client secret.
+  are requested.
 - **Microsoft Foundry** account + project + a `gpt-5.4` model deployment.
 - **API Management AI Gateway:** Developer tier, exposing only `POST /openai/v1/responses` without
   a subscription key. It validates the Function identity, limits the app to 100,000 tokens/minute
@@ -179,8 +197,7 @@ Key values are printed as `azd` outputs and saved to `.azure/<env>/.env` (for ex
 Resource-group outputs are `EXPENSE_PROCESSOR_RESOURCE_GROUP` and `EXPENSE_MCP_RESOURCE_GROUP`;
 `AZURE_RESOURCE_GROUP` remains the processor group for compatibility. Monitoring resource IDs are
 `EXPENSE_PROCESSOR_APPLICATIONINSIGHTS_RESOURCE_ID` and `EXPENSE_MCP_APPLICATIONINSIGHTS_RESOURCE_ID`.
-MCP outputs are `EXPENSE_MCP_FUNCTION_NAME` and `EXPENSE_MCP_SERVER_URL`. The system key is not
-exported into `azd` outputs or committed client settings.
+MCP outputs are `EXPENSE_MCP_FUNCTION_NAME` and `EXPENSE_MCP_SERVER_URL`.
 
 The Function uses `AZURE_FUNCTIONS_AGENTS_PROVIDER=azure_openai` in Azure and points
 `AZURE_OPENAI_ENDPOINT` at the gateway. The runtime appends `/openai/v1/` and calls the Responses
@@ -246,6 +263,8 @@ infra/
     storage-queues.bicep
   expense-mcp/
     main.bicep               # MCP app resources and its own monitoring
+    entra.bicep              # Entra registration and federated platform sign-in credential
+  bicepconfig.json           # Microsoft Graph Bicep extension
   integration/
     queue-access.bicep       # role assignments on processor queues for the MCP identity
   common/                    # reusable definitions, not shared deployed resources

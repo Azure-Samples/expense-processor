@@ -23,6 +23,14 @@ Deploy the sample using the [quickstart](../README.md#quickstart).
 Follow [Test the expense processor](../README.md#test-the-expense-processor) for VS Code Copilot
 connection instructions, example requests, and expected decisions.
 
+The deployed server uses Microsoft Entra OAuth through App Service Authentication. Set
+`PRE_AUTHORIZED_CLIENT_IDS` to VS Code's application ID
+(`aebc6443-996d-45c2-90f0-388ff96faa56`) before provisioning so VS Code can sign in.
+Other clients must be included explicitly in that comma-separated list.
+No Functions system key is needed.
+This controls access to the server, not individual expenses or tools. Authorized users share the
+demo queues, including the ability to reset all output decisions.
+
 ## Submit a request
 
 Example requests you can ask your agent:
@@ -79,7 +87,7 @@ flowchart LR
         flagged[[expense-flagged]]
     end
 
-    user <-->|Streamable HTTP + system key| endpoint
+    user <-->|Streamable HTTP + Entra OAuth| endpoint
     mcp -. Host and deployment storage .-> host
     create -->|Queue output binding · send| inq
     inq -->|queue trigger| skill
@@ -119,6 +127,16 @@ those three queues. Tools do not expose sending to output queues or arbitrary qu
 The MCP identity has no access to policies, the AI Gateway, or the hosted skill's connectors.
 For MCP tool invocation logs, open the MCP app's Application Insights; use the processor's
 Application Insights for policy, model, and decision-routing activity.
+
+Incoming OAuth tokens are validated by App Service Authentication. Queue access still uses the
+MCP app's managed identity, not the user's token. The server does not request Microsoft Graph
+permissions or perform an on-behalf-of token exchange.
+
+Authentication is configured in Bicep, including the Entra registration, its API scope and
+preauthorized client applications, protected-resource metadata for OAuth discovery, and a federated
+credential for secretless platform sign-in. The MCP webhook authorization level is `Anonymous`
+in `host.json`, so no additional Functions system key is required. App Service Authentication
+still requires OAuth for the deployed endpoint; Python tool handlers do not implement authentication.
 
 ## Run the MCP server locally
 

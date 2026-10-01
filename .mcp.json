@@ -1,0 +1,12 @@
+{
+	"mcpServers": {
+		"expenseRemoteServer": {
+			"type": "http",
+			"url": "https://YOUR-MCP-SERVER-NAME.azurewebsites.net/runtime/webhooks/mcp"
+		},
+		"expenseLocalServer": {
+			"url": "http://localhost:7072/runtime/webhooks/mcp",
+			"type": "http"
+		}
+	}
+}

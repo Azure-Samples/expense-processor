@@ -135,3 +135,22 @@ cause is the **Microsoft Store `python.exe` alias**: it sits ahead of the uv-man
 Advanced app settings → App execution aliases** (disable the `python.exe` and `python3.exe` Microsoft
 Store entries), open a new terminal, and run `uv run func start` from `src/` again. Installing the
 interpreter with uv (`uv python install 3.13`) keeps the venv Python authoritative.
+
+## MCP server - Entra provisioning fails with `ServiceTreeValueMissing`
+
+```text
+BadRequest: ServiceTreeValueMissing: ServiceManagementReference field is required for Update, but is missing in the request
+```
+
+Some tenants require a service management reference when creating or updating an Entra app
+registration. This typically applies to Microsoft internal users; the reference is the
+**Service Tree ID** for the service.
+
+Set it in the active environment before running `azd up`:
+
+```bash
+azd env set SERVICE_MANAGEMENT_REFERENCE <service-management-reference>
+azd up
+```
+
+Tenants without this requirement do not need to configure the value.

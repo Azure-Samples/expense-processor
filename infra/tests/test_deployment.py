@@ -61,12 +61,104 @@ class DeploymentTests(unittest.TestCase):
 
     def test_mcp_accepts_only_queue_endpoint_as_cross_app_configuration(self):
         inputs = parameters(self.mcp)
-        self.assertEqual(set(inputs), {"name", "resourceToken", "location", "tags", "expenseQueueServiceUri"})
+        self.assertEqual(set(inputs), {"name", "resourceToken", "location", "tags", "expenseQueueServiceUri", "preAuthorizedClientIds", "serviceManagementReference"})
         self.assertIn("expenseProcessor", inputs["expenseQueueServiceUri"])
         self.assertIn("EXPENSE_QUEUE_SERVICE_URI", inputs["expenseQueueServiceUri"])
         source = (ROOT / "infra/expense-mcp/main.bicep").read_text()
         self.assertNotIn("expenseStorageAccountName", source)
         self.assertNotIn("Microsoft.Authorization/roleAssignments", source)
+
+    def test_service_management_reference_reaches_the_graph_application(self):
+        input_file = json.loads((ROOT / "infra/main.parameters.json").read_text())
+        self.assertEqual(
+            input_file["parameters"]["serviceManagementReference"]["value"],
+            "${SERVICE_MANAGEMENT_REFERENCE}",
+        )
+        self.assertEqual(parameters(self.mcp)["serviceManagementReference"], "[parameters('serviceManagementReference')]")
+        entra = module(self.mcp_template, "expenseMcpEntra")
+        self.assertEqual(parameters(entra)["serviceManagementReference"], "[parameters('serviceManagementReference')]")
+        application = entra["properties"]["template"]["resources"]["application"]["properties"]
+        self.assertEqual(
+            application["serviceManagementReference"],
+            "[if(empty(parameters('serviceManagementReference')), null(), parameters('serviceManagementReference'))]",
+        )
+
+    def test_mcp_uses_platform_oauth_without_a_system_key(self):
+        app = parameters(module(self.mcp_template, "expenseMcpApp"))
+        auth = app["authSettings"]
+        self.assertTrue(auth["platform"]["enabled"])
+        self.assertTrue(auth["globalValidation"]["requireAuthentication"])
+        self.assertEqual(auth["globalValidation"]["unauthenticatedClientAction"], "Return401")
+        self.assertTrue(auth["httpSettings"]["requireHttps"])
+        provider = auth["identityProviders"]["azureActiveDirectory"]
+        self.assertTrue(provider["enabled"])
+        self.assertIn("'expenseMcpEntra'", provider["registration"]["clientId"])
+        self.assertEqual(provider["registration"]["clientSecretSettingName"], "OVERRIDE_USE_MI_FIC_ASSERTION_CLIENTID")
+        self.assertIn("'expenseMcpEntra'", provider["validation"]["allowedAudiences"][0])
+        self.assertIn("preAuthorizedClientIds", provider["validation"]["defaultAuthorizationPolicy"]["allowedApplications"])
+        settings = app["appSettings"]
+        host = json.loads((ROOT / "mcp-server/host.json").read_text())
+        self.assertEqual(host["extensions"]["mcp"]["system"]["webhookAuthorizationLevel"], "Anonymous")
+        self.assertNotIn("AzureFunctionsJobHost__extensions__mcp__system__webhookAuthorizationLevel", settings)
+        self.assertIn("/user_impersonation", settings["WEBSITE_AUTH_PRM_DEFAULT_WITH_SCOPES"])
+        self.assertIn("'expenseMcpIdentity'", settings["OVERRIDE_USE_MI_FIC_ASSERTION_CLIENTID"])
+        self.assertEqual(settings["WEBSITE_AUTH_AAD_ALLOWED_TENANTS"], "[tenant().tenantId]")
+        self.assertEqual(provider["login"]["loginParameters"], ["scope=openid profile email"])
+        self.assertFalse(auth["login"]["tokenStore"]["enabled"])
+
+    def test_registration_exposes_mcp_scope_and_preauthorizes_configured_clients_without_graph_permissions(self):
+        client_parameter = self.template["parameters"]["preAuthorizedClientIds"]
+        self.assertEqual(client_parameter["type"], "string")
+        self.assertEqual(client_parameter["minLength"], 1)
+        self.assertNotIn("defaultValue", client_parameter)
+        input_file = json.loads((ROOT / "infra/main.parameters.json").read_text())
+        self.assertEqual(input_file["parameters"]["preAuthorizedClientIds"]["value"], "${PRE_AUTHORIZED_CLIENT_IDS}")
+        self.assertEqual(parameters(self.mcp)["preAuthorizedClientIds"], "[variables('preAuthorizedClientIdsArray')]")
+        conversion = self.template["variables"]["preAuthorizedClientIdsArray"]
+        self.assertIn("split(parameters('preAuthorizedClientIds'), ',')", conversion)
+        self.assertIn("trim(", conversion)
+        entra = module(self.mcp_template, "expenseMcpEntra")
+        self.assertEqual(parameters(entra)["preAuthorizedClientIds"], "[parameters('preAuthorizedClientIds')]")
+        self.assertIn("'expenseMcpIdentity'", parameters(entra)["managedIdentityPrincipalId"])
+        template = entra["properties"]["template"]
+        application = template["resources"]["application"]["properties"]
+        self.assertEqual(application["signInAudience"], "AzureADMyOrg")
+        self.assertEqual(application["api"]["requestedAccessTokenVersion"], 2)
+        scope = application["api"]["oauth2PermissionScopes"][0]
+        self.assertEqual(scope["value"], "user_impersonation")
+        self.assertTrue(scope["isEnabled"])
+        preauthorized = application["api"]["copy"][0]
+        self.assertEqual(preauthorized["name"], "preAuthorizedApplications")
+        self.assertEqual(preauthorized["input"]["delegatedPermissionIds"], [scope["id"]])
+        self.assertNotIn("requiredResourceAccess", application)
+        self.assertNotIn("passwordCredentials", application)
+        federated = template["resources"]["federatedCredential"]["properties"]
+        self.assertEqual(federated["subject"], "[parameters('managedIdentityPrincipalId')]")
+        self.assertEqual(federated["audiences"], ["api://AzureADTokenExchange"])
+
+    def test_oauth_is_not_enabled_for_the_queue_only_processor(self):
+        app = parameters(module(self.processor_template, "api"))
+        self.assertNotIn("authSettings", app)
+        self.assertNotIn("WEBSITE_AUTH_PRM_DEFAULT_WITH_SCOPES", app["appSettings"])
+        self.assertNotIn("AzureFunctionsJobHost__extensions__mcp__system__webhookAuthorizationLevel", app["appSettings"])
+
+    def test_remote_clients_use_oauth_instead_of_an_inline_key(self):
+        configurations = [
+            (path, namespace)
+            for path, namespace in (
+                (ROOT / ".vscode/mcp.json", "servers"),
+                (ROOT / ".mcp.json", "mcpServers"),
+            )
+            if path.is_file()
+        ]
+        self.assertTrue(configurations, "An MCP client configuration is required.")
+        for path, namespace in configurations:
+            config = json.loads(path.read_text())
+            self.assertTrue(config[namespace])
+            for name, server in config[namespace].items():
+                with self.subTest(configuration=path, server=name):
+                    self.assertNotIn("x-functions-key", server.get("headers", {}))
+            self.assertFalse(any(item["id"] == "expense-mcp-key" for item in config.get("inputs", [])))
 
     def test_queue_endpoint_is_read_only_after_storage_creation(self):
         endpoint = self.processor_template["outputs"]["EXPENSE_QUEUE_SERVICE_URI"]["value"]
@@ -97,6 +189,19 @@ class DeploymentTests(unittest.TestCase):
         self.assertNotIn("ExpenseInputStorage", settings)
         self.assertFalse(any(key.startswith(("POLICY_MCP", "QUEUE_MCP", "AZURE_OPENAI")) for key in settings))
         self.assertEqual(module(self.mcp_template, "expenseMcpHostStorage")["properties"]["parameters"]["allowSharedKeyAccess"]["value"], False)
+
+    def test_only_mcp_has_an_always_ready_http_instance(self):
+        mcp = module(self.mcp_template, "expenseMcpApp")
+        self.assertEqual(parameters(mcp)["alwaysReady"], [{"name": "http", "instanceCount": 1}])
+        processor = module(self.processor_template, "api")
+        self.assertNotIn("alwaysReady", parameters(processor))
+        for app in (mcp, processor):
+            template = app["properties"]["template"]
+            self.assertEqual(template["parameters"]["alwaysReady"]["defaultValue"], [])
+            site = next(resource for resource in template["resources"] if resource["type"] == "Microsoft.Resources/deployments")
+            scaling = site["properties"]["parameters"]["functionAppConfig"]["value"]["scaleAndConcurrency"]
+            self.assertIn("if(empty(parameters('alwaysReady')), createObject()", scaling)
+            self.assertIn("'alwaysReady', parameters('alwaysReady')", scaling)
 
     def test_apps_have_separate_insights_and_separate_workspaces(self):
         processor_monitor = module(self.processor_template, "processorMonitoring")

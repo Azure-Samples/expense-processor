@@ -194,9 +194,9 @@ src/
   local.settings.json.sample   # app settings reference
 mcp-server/                    # separate Functions MCP app: create / list decisions / reset demo
   function_app.py              # MCP decorators, queue output binding, SDK peek/clear
-  host.json                   # MCP extension bundle, key requirement, raw queue encoding
+  host.json                   # MCP extension bundle and raw queue encoding
   pyproject.toml               # independent app dependencies
-.vscode/mcp.json               # local/remote client setup; remote key is a password prompt
+.mcp.json                      # local/remote client setup; remote access uses Entra OAuth
 infra/
   main.bicep                   # one subscription deployment, two app resource groups
   expense-processor/           # hosted-skill infrastructure and its own dependencies

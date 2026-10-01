@@ -46,9 +46,17 @@ param reasoningSummary string = 'concise'
 @description('Deploying principal granted queue and policy access for the operator scripts and local development.')
 param principalId string = ''
 
+@description('Service management reference for the MCP Entra app registration, required by tenants that enforce service ownership.')
+param serviceManagementReference string = ''
+
+@minLength(1)
+@description('Required comma-separated MCP client application IDs to preauthorize for sign-in.')
+param preAuthorizedClientIds string
+
 var abbrs = loadJsonContent('./abbreviations.json')
 var resourceToken = toLower(uniqueString(subscription().id, environmentName, location))
 var tags = { 'azd-env-name': environmentName }
+var preAuthorizedClientIdsArray = map(split(preAuthorizedClientIds, ','), clientId => trim(clientId))
 
 resource processorGroup 'Microsoft.Resources/resourceGroups@2021-04-01' = {
   name: '${abbrs.resourcesResourceGroups}${environmentName}'
@@ -88,6 +96,8 @@ module expenseMcp './expense-mcp/main.bicep' = {
     location: location
     tags: tags
     expenseQueueServiceUri: processor.outputs.EXPENSE_QUEUE_SERVICE_URI
+    preAuthorizedClientIds: preAuthorizedClientIdsArray
+    serviceManagementReference: serviceManagementReference
   }
 }
 
