@@ -128,14 +128,23 @@ Install [Azurite](https://learn.microsoft.com/azure/storage/common/storage-use-a
 ### Configure the hosted skill
 
 1. Copy [`src/local.settings.json.sample`](src/local.settings.json.sample) to
-   `src/local.settings.json`. Keep `AzureWebJobsStorage` set to `UseDevelopmentStorage=true`.
-2. Set `AZURE_OPENAI_ENDPOINT` and `AZURE_OPENAI_DEPLOYMENT` to the model endpoint and deployment
-   you want to use.
-3. After `azd provision`, copy `POLICY_MCP_SERVER_URL` and `QUEUE_MCP_SERVER_URL` from
-   `azd env get-values` into local settings. Leave `POLICY_MCP_CLIENT_ID` and `QUEUE_MCP_CLIENT_ID`
-   empty.
+   `src/local.settings.json`.
+2. Configure the values below. After `azd up`, run `azd env get-values` to get the Foundry
+   project endpoint, deployment name, and connector URLs.
+3. Leave `POLICY_MCP_CLIENT_ID` and `QUEUE_MCP_CLIENT_ID` empty to use your developer identity.
 4. Sign in with `az login` or `azd auth login`. The runtime uses `DefaultAzureCredential`;
    no model API key is needed.
+
+| Setting | Local value | Purpose |
+|---|---|---|
+| `AzureWebJobsStorage` | `UseDevelopmentStorage=true` | Hosted skill's local input queue and host storage |
+| `AZURE_OPENAI_ENDPOINT` | `https://<foundry-resource-name>.openai.azure.com/` | Use the resource name from the hostname in `FOUNDRY_PROJECT_ENDPOINT`, available in `azd env get-values` |
+| `AZURE_OPENAI_DEPLOYMENT` | `<model-deployment-name>` | Use `FOUNDRY_MODEL` from `azd env get-values`, such as `gpt-5.4` |
+| `POLICY_MCP_SERVER_URL` | `<POLICY_MCP_SERVER_URL>` | Copy from `azd env get-values` for policy access |
+| `QUEUE_MCP_SERVER_URL` | `<QUEUE_MCP_SERVER_URL>` | Copy from `azd env get-values` for decision routing |
+
+The endpoint uses the Foundry **account** name (`cog-...`), not the project name (`cog-...-proj`).
+The deployment name matches the model name in this sample, but can differ for custom deployments.
 
 > The model call and both Connector Namespace MCP servers still use Azure. The local trigger reads
 > Azurite, but decisions are written to the deployed Azure output queues because Connector Namespace
@@ -146,8 +155,6 @@ Install [Azurite](https://learn.microsoft.com/azure/storage/common/storage-use-a
 1. Copy [`mcp-server/local.settings.json.sample`](mcp-server/local.settings.json.sample) to
    `mcp-server/local.settings.json`.
 2. Configure the values below. Get `OUTPUT_STORAGE_ACCOUNT` from `azd env get-values`.
-3. Leave `ExpenseStorage__credential` and `ExpenseStorage__clientId` unset to use your signed-in
-   developer identity.
 
 | Setting | Local value | Purpose |
 |---|---|---|
@@ -166,9 +173,16 @@ then start in either order. Reuse Azurite if it is already running.
 azurite --silent --location .azurite
 ```
 
-**Terminal B — hosted skill**
+**Terminal B — initialize the input queue and start the hosted skill**
+
+Create the local input queue for expense requests, then start the hosted skill:
 
 ```bash
+az storage queue create \
+  --name expense-requests \
+  --connection-string 'UseDevelopmentStorage=true' \
+  --output none
+
 cd src && uv run func start --port 7071
 ```
 
