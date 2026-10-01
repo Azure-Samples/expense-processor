@@ -15,9 +15,9 @@
   },
   "logging": {
     "logLevel": {
-      "default": "Information",
-      "Azure.Core": "Warning",
-      "Azure.Storage.Queues": "Warning"
+      "default": "Warning",
+      "Azure.Core": "Error",
+      "Azure.Storage.Queues": "Error"
     }
   },
   "extensionBundle": {
